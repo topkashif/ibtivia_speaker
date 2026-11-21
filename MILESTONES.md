@@ -34,8 +34,12 @@ Clone boots the upstream firmware minus the OLED, pin-compatible.
   host-configured (our firmware does this); nPM1300 BUCKs need **2.2 µH**
   inductors (not 1.5 µH); nRF5340 QKAA is **aQFN-94** (not aQFN73).
 
-## M2 — KiCad schematic ☐
-- [ ] Project skeleton, 4-layer stackup decided
+## M2 — KiCad schematic ◐
+- [x] Project skeleton, 4-layer stackup decided — `kicad/` project
+      (`neo_n1`), 6-block sheet hierarchy (Radio/Power/Audio/Memory/USB/Misc),
+      SIG/GND/PWR/SIG assignment + impedance targets in `kicad/stackup.md`.
+      Verified: ERC 0 violations, hierarchy netlist export resolves all 7
+      sheets, DRC 0 violations (placeholder Edge.Cuts outline)
 - [ ] All blocks drawn: nRF5340+nRF7002+antenna switch (copied dimension-for-
       dimension from Nordic nRF7002 DK reference), nPM1300 power tree, PDM
       mics, PY25Q64H, microSD, USB, magnetic charger, SWD + test points

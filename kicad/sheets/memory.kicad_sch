@@ -1,0 +1,15 @@
+(kicad_sch
+	(version 20260306)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "441be331-f3b6-4e59-9b73-48d5aad010b5")
+	(paper "A4")
+	(title_block
+		(title "Neo N1 - reSpeaker Clip clone (no OLED)")
+		(date "2026-11-21")
+		(rev "A")
+		(comment 1 "Memory: QSPI flash (PY25Q64HA / Winbond alt) + microSD (DM3AT) with gated rail")
+	)
+	(lib_symbols)
+	(embedded_fonts no)
+)

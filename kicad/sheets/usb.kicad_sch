@@ -1,0 +1,15 @@
+(kicad_sch
+	(version 20260306)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "d55eb4bb-5d0f-4f5b-894a-fc1c490d9308")
+	(paper "A4")
+	(title_block
+		(title "Neo N1 - reSpeaker Clip clone (no OLED)")
+		(date "2026-11-21")
+		(rev "A")
+		(comment 1 "USB: USB-C (USB4105-GF-A), CC Rd pair 5.1k, ESD USBLC6-2SC6. Sole charge/data port - no pogo.")
+	)
+	(lib_symbols)
+	(embedded_fonts no)
+)

@@ -1,0 +1,289 @@
+(kicad_sch
+	(version 20260306)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "9f19b16c-0527-4e52-bc42-a056a6a1ffa7")
+	(paper "A4")
+	(title_block
+		(title "Neo N1 - reSpeaker Clip clone (no OLED)")
+		(date "2026-11-21")
+		(rev "A")
+	)
+	(lib_symbols)
+	(sheet
+		(at 30 50)
+		(size 60 40)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "47b0e3b7-6847-4f23-9317-fd80997304b2")
+		(property "Sheetname" "Radio"
+			(at 30 49.2375 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.524 1.524)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "sheets/radio.kicad_sch"
+			(at 30 90.6101 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.524 1.524)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "neo_n1"
+				(path "/9f19b16c-0527-4e52-bc42-a056a6a1ffa7"
+					(page "2")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 105 50)
+		(size 60 40)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "77518237-9878-4088-8f01-62feb60facc9")
+		(property "Sheetname" "Power"
+			(at 105 49.2375 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.524 1.524)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "sheets/power.kicad_sch"
+			(at 105 90.6101 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.524 1.524)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "neo_n1"
+				(path "/9f19b16c-0527-4e52-bc42-a056a6a1ffa7"
+					(page "3")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 180 50)
+		(size 60 40)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "1a51ce0c-3319-42f6-9440-ba22b62f1b81")
+		(property "Sheetname" "Audio"
+			(at 180 49.2375 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.524 1.524)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "sheets/audio.kicad_sch"
+			(at 180 90.6101 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.524 1.524)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "neo_n1"
+				(path "/9f19b16c-0527-4e52-bc42-a056a6a1ffa7"
+					(page "4")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 30 110)
+		(size 60 40)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "441be331-f3b6-4e59-9b73-48d5aad010b5")
+		(property "Sheetname" "Memory"
+			(at 30 109.2375 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.524 1.524)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "sheets/memory.kicad_sch"
+			(at 30 150.6101 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.524 1.524)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "neo_n1"
+				(path "/9f19b16c-0527-4e52-bc42-a056a6a1ffa7"
+					(page "5")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 105 110)
+		(size 60 40)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "d55eb4bb-5d0f-4f5b-894a-fc1c490d9308")
+		(property "Sheetname" "USB"
+			(at 105 109.2375 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.524 1.524)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "sheets/usb.kicad_sch"
+			(at 105 150.6101 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.524 1.524)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "neo_n1"
+				(path "/9f19b16c-0527-4e52-bc42-a056a6a1ffa7"
+					(page "6")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 180 110)
+		(size 60 40)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(stroke
+			(width 0)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "99e7020e-70f7-4d7c-930e-41046910d87a")
+		(property "Sheetname" "Misc"
+			(at 180 109.2375 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.524 1.524)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "sheets/misc.kicad_sch"
+			(at 180 150.6101 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.524 1.524)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "neo_n1"
+				(path "/9f19b16c-0527-4e52-bc42-a056a6a1ffa7"
+					(page "7")
+				)
+			)
+		)
+	)
+	(sheet_instances
+		(path "/"
+			(page "1")
+		)
+	)
+	(embedded_fonts no)
+)

@@ -9,7 +9,9 @@ Building a pin-compatible clone of the Seeed reSpeaker Clip wearable recorder
 **without the OLED**. Firmware builds under NCS v3.3.0 with display compiled
 out (M0 done). **M1 done: costed BOM with alternates lives in `bom/bom.csv`
 (24 rows, priced 2026-11-21)**; hardware contract updated with the BOM
-findings. No KiCad project exists yet. No hardware exists yet.
+findings. **M2 started (2026-11-21): KiCad project skeleton exists in
+`kicad/`** — 6-block sheet hierarchy + 4-layer stackup decided, ERC/DRC
+clean, no components drawn yet. No hardware exists yet.
 
 ## Done and verified
 
@@ -82,14 +84,32 @@ findings. No KiCad project exists yet. No hardware exists yet.
   Attend 4-pin magnetic pogo (both factory-direct industry-wide, not a
   distributor gap we can buy around).
 
+## Done and verified (M2, in progress)
+
+- **Step 1 — project skeleton (2026-11-21):** `kicad/neo_n1` project; root
+  schematic + 6 hierarchical sub-sheets in `kicad/sheets/` (Radio, Power,
+  Audio, Memory, USB, Misc — pages 1–7); `kicad/scripts/make_board_skeleton.py`
+  creates `neo_n1.kicad_pcb` with 4 copper layers renamed GND/PWR (inner) and
+  a placeholder Edge.Cuts outline. Stackup decision + 50 Ω / 90 Ω impedance
+  targets in `kicad/stackup.md`; physical stackup numbers deferred to M3
+  (fab house undecided). Verified 2026-11-21: `kicad-cli sch erc` 0
+  violations; netlist export resolves all 7 sheets; `kicad-cli pcb drc`
+  0 violations. Format notes: KiCad 10 writes sch `version 20260306` /
+  pcb `version 20260206`; hand-written s-expr files parse fine — validate
+  everything with kicad-cli; kicad-cli drops `*-erc.rpt`/`*-drc.rpt` in the
+  **cwd** (delete or redirect after runs).
+
 ## Next actions (in order)
 
-1. **M2 — KiCad:** create `kicad/` project (4-layer SIG/GND/PWR/SIG); copy
-   nRF7002 DK reference schematics for the nRF5340+nRF7002+antenna block
-   (antenna: Johanson keep-out + shunt-L/series-C pi pads); then write the
-   netlist audit script (KiCad Python) comparing nets to
-   `hardware_reference.md` — which now includes the LED on P1.09 and the
-   nPM1300 2.2 µH BUCK inductors.
+1. **M2 step 2 — Radio block:** fetch the Nordic nRF7002 DK reference
+   schematic PDF, draw nRF5340-QKAA + nRF7002-QFAA + PE4259 antenna switch +
+   Johanson 2450AT18B0100001E antenna (shunt-L/series-C pi pads) + both
+   crystals + coex PTA pins in `kicad/sheets/radio.kicad_sch`. Requires
+   project symbol libraries first (part of step 2).
+2. **M2 step 3 — Power block:** nPM1300 power tree w/ 2.2 µH BUCK inductors;
+   during drawing, confirm integrated VBUS input protection in PS v1.3
+   (add VBUS TVS only if absent) — checklist item carried from the pogo
+   removal decision.
 
 ## Open questions / decisions pending
 

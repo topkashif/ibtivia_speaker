@@ -1,0 +1,75 @@
+{
+  "board": {},
+  "boards": [],
+  "cvpcb": {
+    "equivalence_files": []
+  },
+  "libraries": {
+    "pinned_footprint_libs": [],
+    "pinned_symbol_libs": []
+  },
+  "meta": {
+    "filename": "neo_n1.kicad_pro",
+    "version": 3
+  },
+  "net_settings": {
+    "classes": [
+      {
+        "bus_width": 12,
+        "clearance": 0.2,
+        "diff_pair_gap": 0.25,
+        "diff_pair_via_gap": 0.25,
+        "diff_pair_width": 0.2,
+        "line_style": 0,
+        "microvia_diameter": 0.3,
+        "microvia_drill": 0.1,
+        "name": "Default",
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "priority": 2147483647,
+        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "track_width": 0.2,
+        "via_diameter": 0.6,
+        "via_drill": 0.3,
+        "wire_width": 6
+      }
+    ],
+    "meta": {
+      "version": 4
+    }
+  },
+  "schematic": {
+    "legacy_lib_dir": "",
+    "legacy_lib_list": []
+  },
+  "sheets": [
+    [
+      "9f19b16c-0527-4e52-bc42-a056a6a1ffa7",
+      "Root"
+    ],
+    [
+      "47b0e3b7-6847-4f23-9317-fd80997304b2",
+      "Radio"
+    ],
+    [
+      "77518237-9878-4088-8f01-62feb60facc9",
+      "Power"
+    ],
+    [
+      "1a51ce0c-3319-42f6-9440-ba22b62f1b81",
+      "Audio"
+    ],
+    [
+      "441be331-f3b6-4e59-9b73-48d5aad010b5",
+      "Memory"
+    ],
+    [
+      "d55eb4bb-5d0f-4f5b-894a-fc1c490d9308",
+      "USB"
+    ],
+    [
+      "99e7020e-70f7-4d7c-930e-41046910d87a",
+      "Misc"
+    ]
+  ],
+  "text_variables": {}
+}
