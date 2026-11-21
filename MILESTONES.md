@@ -47,19 +47,20 @@ beyond `AGENTS.md` + `HANDOFF.md` + `MILESTONES.md` + `hardware_reference.md`
       pages 1–7), SIG/GND/PWR/SIG in `kicad/stackup.md`.
       *Validated 2026-11-21:* ERC 0, netlist export resolves all 7 sheets,
       DRC 0 (placeholder Edge.Cuts outline).
-- [ ] **M2a — Libraries.** Project symbol lib `kicad/lib/neo_n1.kicad_sym`.
-      Reuse stock symbols where pin-compatible (nRF5340-QKxx IS in stock
-      `MCU_Nordic`; generic QSPI flash, USBLC6 in `Power_Protection`, button
-      `KMR2` in `Button_Switch_SMD`); custom symbols for the rest — expected
-      needs: nRF7002-QFAA, nPM1300-QEAA, PE4259, chip antenna 2450AT18B,
-      PDM mic T5837, battery+NTC, ERM haptic, GCT USB4105 (stock generic
-      receptacle symbol may serve). Custom footprints only where stock ones
-      don't match the BOM package (check `Connector_Card` DM3AT,
-      `Connector_USB` for the GCT part first).
-      *Validate:* `kicad-cli sch erc` still 0; `kicad-cli sym export svg`
-      parses every custom symbol; **new `kicad/scripts/symbol_audit.py`**
-      diffs custom-symbol pin names/numbers against the pin map in
-      `hardware_reference.md` — zero diffs.
+- [x] **M2a — Libraries.** Project symbol lib `kicad/lib/neo_n1.kicad_sym`
+      (nRF5340-QKxx from stock `MCU_Nordic`; nRF7002-QFAA-R7, NPM1300-QEAA-R7,
+      PE4259 from user-fetched SnapEDA vendor downloads in
+      `kicad/lib/vendor/`) + 4 footprints in
+      `kicad/lib/neo_n1_footprints.pretty` + project `sym-lib-table` /
+      `fp-lib-table`. Symbol↔footprint fixes: SnapEDA nRF5340 die pad
+      renumbered `104`→`EP`. nPM1300-CAAA (BGA) zip = wrong variant, kept as
+      reference only.
+      *Validated 2026-11-21:* `symbol_audit.py` — zero diffs: all 48
+      nRF5340 GPIO→ball mappings match the Nordic PS aQFN94 table, exact
+      pin maps verified for nRF7002 (49, vs Nordic QFN ref schematic),
+      nPM1300 (33, vs Nordic PS QFN32 table), PE4259 (6, vs pSemi DS Table
+      7); every symbol pin exists as a footprint pad; all 4 symbols export
+      via `kicad-cli sym export svg`; ERC still 0.
 - [ ] **M2b — Radio block drawn** (`sheets/radio.kicad_sch`): nRF5340 +
       nRF7002 + PE4259 + antenna pi pads (shunt-L/series-C, keep-out note for
       M3) + both crystals w/ load caps + coex PTA pins — dimension-for-

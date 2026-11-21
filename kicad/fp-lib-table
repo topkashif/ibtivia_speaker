@@ -1,0 +1,4 @@
+(fp_lib_table
+	(version 7)
+	(lib (name "neo_n1_footprints")(type "KiCad")(uri "${KIPRJMOD}/lib/neo_n1_footprints.pretty")(options "")(descr "Neo N1 part-specific footprints"))
+)

@@ -1,0 +1,9 @@
+Manufacturer=Nordic Semiconductor
+PartNumber=NPM1300-QEAA-R7
+PartCategory=Integrated Circuit
+PackageCategory=Quad Flat No-Lead
+PinCount=33
+Version=2.1
+Released=2025-03-06 04:34:33
+Downloaded=2026-11-21 11:10:50
+3D=Y

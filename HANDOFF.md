@@ -86,6 +86,16 @@ clean, no components drawn yet. No hardware exists yet.
 
 ## Done and verified (M2, in progress)
 
+- **M2a — libraries (2026-11-21):** `kicad/lib/neo_n1.kicad_sym` assembled
+  from raw-span copies (nRF5340-QKxx = stock `MCU_Nordic`; nRF7002-QFAA-R7 /
+  NPM1300-QEAA-R7 / PE4259 = SnapEDA downloads in `kicad/lib/vendor/`, only
+  their KiCad files tracked). Footprints in `kicad/lib/neo_n1_footprints.pretty`
+  (SnapEDA nRF5340 die pad renamed `104`→`EP`; regenerating the lib re-applies
+  it via `assemble_lib.py`). Project `sym-lib-table`/`fp-lib-table` wired.
+  Verified: `symbol_audit.py` zero diffs (48/48 GPIO→ball vs Nordic PS
+  aQFN94 table; exact maps for nRF7002/NPM1300/PE4259 vs Nordic PS + pSemi);
+  `kicad-cli sym export svg` OK ×4; ERC 0. nPM1300-CAAA zip = BGA variant
+  (wrong one — QEAA is our part), reference only.
 - **Step 1 — project skeleton (2026-11-21):** `kicad/neo_n1` project; root
   schematic + 6 hierarchical sub-sheets in `kicad/sheets/` (Radio, Power,
   Audio, Memory, USB, Misc — pages 1–7); `kicad/scripts/make_board_skeleton.py`
@@ -105,16 +115,15 @@ Sub-milestones with per-step validation live in `MILESTONES.md` §M2
 (M2a…M2f). Each ends validated + committed; a fresh session resumes from
 this file + the six context docs listed in MILESTONES.md.
 
-1. **M2a — Libraries:** project symbol lib `kicad/lib/neo_n1.kicad_sym`;
-   nRF5340-QKxx comes free from stock `MCU_Nordic`, custom symbols needed
-   for nRF7002/nPM1300/PE4259/antenna/mic/battery/haptic/USB-C; deliver
-   `kicad/scripts/symbol_audit.py` (pin names/numbers vs pin map, zero
-   diffs).
-2. **M2b — Radio block** + deliver `kicad/scripts/netlist_audit.py`
+1. **M2b — Radio block** + deliver `kicad/scripts/netlist_audit.py`
    (per-block mode; reuses the same pin-map source as symbol_audit).
-3. **M2c — Power block** (+ nPM1300 VBUS-protection verdict recorded).
-4. **M2d / M2e — Memory+USB, then Audio+Misc.**
-5. **M2f — full netlist audit vs `hardware_reference.md`, zero diffs** —
+   Reference: nRF7002 PS QFN reference schematic + DK hardware files
+   (nrf7002-qfaa-reference-layout-1_2.zip URL found on the nRF7002 Downloads
+   page); PE4259 control mode decision (single-pin vs complementary) to be
+   made while drawing (SW_CTRL0 from nRF7002 drives the switch).
+2. **M2c — Power block** (+ nPM1300 VBUS-protection verdict recorded).
+3. **M2d / M2e — Memory+USB, then Audio+Misc.**
+4. **M2f — full netlist audit vs `hardware_reference.md`, zero diffs** —
    M2 acceptance; this also covers the LED-on-P1.09 and 2.2 µH inductor
    updates already reflected in the pin map.
 

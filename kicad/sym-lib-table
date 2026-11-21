@@ -1,0 +1,4 @@
+(sym_lib_table
+	(version 7)
+	(lib (name "neo_n1")(type "KiCad")(uri "${KIPRJMOD}/lib/neo_n1.kicad_sym")(options "")(descr "Neo N1 pinned symbols (datasheet-verified)"))
+)

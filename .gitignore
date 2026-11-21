@@ -13,3 +13,4 @@ build_log.txt
 *.bak
 fp-info-cache
 *_log.txt
+__pycache__/

@@ -1,0 +1,9 @@
+Manufacturer=Nordic Semiconductor
+PartNumber=NRF7002-QFAA-R7
+PartCategory=Integrated Circuit
+PackageCategory=Quad Flat No-Lead
+PinCount=49
+Version=1.1
+Released=2024-03-05 03:31:04
+Downloaded=2026-11-21 10:51:13
+3D=Y
