@@ -1,44 +1,64 @@
 # Handoff — read me first
 
-Last updated: 2026-11-20. Project map and rules: `AGENTS.md`.
+Last updated: 2026-11-21. Project map and rules: `AGENTS.md`.
 Milestones: `MILESTONES.md`. Hardware contract: `hardware_reference.md`.
 
 ## Current state (30-second version)
 
 Building a pin-compatible clone of the Seeed reSpeaker Clip wearable recorder
-**without the OLED**. Firmware tree is modified and verified: it builds
-completely under NCS v3.3.0 with the display compiled out. No KiCad project
-exists yet. No hardware exists yet.
+**without the OLED**. Firmware builds under NCS v3.3.0 with display compiled
+out (M0 done). **M1 done: costed BOM with alternates lives in `bom/bom.csv`
+(24 rows, priced 2026-11-21)**; hardware contract updated with the BOM
+findings. No KiCad project exists yet. No hardware exists yet.
 
 ## Done and verified
 
-- OLED removal applied across 7 firmware files (board DTS, app Kconfig /
-  CMakeLists / display.h stubs / prj.conf, MCUboot conf + overlay, app board
-  overlay). Verified: build exit 0, signed artifacts generated,
+- M0 (firmware boundary): OLED removal applied across 7 firmware files (board
+  DTS, app Kconfig / CMakeLists / display.h stubs / prj.conf, MCUboot conf +
+  overlay, app board overlay). Verified: build exit 0, signed artifacts,
   `CONFIG_CLIP_DISPLAY`/`CONFIG_MCUBOOT_DISPLAY` not set, no display objects
-  linked. See `MILESTONES.md` M0 and `hardware_reference.md` §5 for the
-  file-by-file delta.
+  linked. See `MILESTONES.md` M0 and `hardware_reference.md` §5.
 - NCS v3.3.0 installed at `C:\ncs\v3.3.0` (toolchain `936afb6332`); the 5
   MCUboot patches applied to `C:\ncs\v3.3.0\bootloader\mcuboot`; ccache copied
   into that toolchain's `opt/bin`. **v3.4.2 does not build this tree** — do
-  not "upgrade".
-- A successful build lives in
-  `reSpeaker_Clip-main/reSpeaker_Clip-main/build-clip/` (gitignored).
+  not "upgrade". Successful build in `build-clip/` (gitignored).
+
+## Done and verified (M1)
+
+- `bom/bom.csv`: per-block MPNs, packages, stock + qty-10 prices at 2+
+  distributors (collected 2026-11-21 by three parallel research passes);
+  firmware-constrained parts flagged; substitutions carry their firmware
+  consequence in-row. nPM1300 Digi-Key row re-verified directly (15,740 in
+  stock, $2.519 @10).
+- Key selection calls (details in CSV + `hardware_reference.md` §1):
+  nRF5340-QKAA-R $9.68/$8.04 @10 · nRF7002-QFAA-R (thin DK stock, incoming
+  Dec) · NPM1300-QEAA-R · flash PY25Q64HA-SUH-IR (LCSC-only; ⚠ P25Q64H has
+  wrong JEDEC ID) w/ Winbond alt (DTS `jedec-id` edit) · mics TDK MMICT5838
+  (0 stock until Dec) w/ Knowles SPH0641LU4H-1 sub (no fw change) · RF switch
+  PE42359SCAA-Z · SD Hirose DM3AT · button C&K KMR231NG LFS · antenna Johanson
+  2450AT18B0100001E · crystals ECS-320-10-36-CKL-TR (HFXO, CL 10 pF) +
+  ECS-.327-7-34B-TR (LFXO, CL 7 pF — matches internal-cap tuning) · inductors
+  2×10 µH (nRF5340) + 2×2.2 µH (nPM1300, per PS v1.3 Table 3) · haptic ERM
+  VCLP1020B002L (ERM not LRA: PMIC GPIO on/off drive) · USB-C GCT USB4105-GF-A.
+- LED decision: **add LED + 1 kΩ on P1.09** (Kingbright APG1005ZGC-5MAV rows
+  in BOM); recorded in decisions log. No firmware consequence today.
+- Two single-source positions accepted with FLAGs: HSZ 362123 battery and
+  Attend 4-pin magnetic pogo (both factory-direct industry-wide, not a
+  distributor gap we can buy around).
 
 ## Next actions (in order)
 
-1. **M1 — BOM:** turn `hardware_reference.md` §1 into `bom/bom.csv` with MPNs,
-   stock, price, second sources. Cross-check firmware-encoded specs against
-   datasheets; flag non-substitutable parts (nPM1300, battery w/ NTC, flash
-   JEDEC ID).
-2. Decide: LED indicator on a spare GPIO (yes/no) before schematic capture.
-3. **M2 — KiCad:** create `kicad/` project; copy nRF7002 DK reference
-   schematics for the nRF5340+nRF7002+antenna block; then write the netlist
-   audit script (KiCad Python) comparing nets to `hardware_reference.md`.
+1. **M2 — KiCad:** create `kicad/` project (4-layer SIG/GND/PWR/SIG); copy
+   nRF7002 DK reference schematics for the nRF5340+nRF7002+antenna block
+   (antenna: Johanson keep-out + shunt-L/series-C pi pads); then write the
+   netlist audit script (KiCad Python) comparing nets to
+   `hardware_reference.md` — which now includes the LED on P1.09 and the
+   nPM1300 2.2 µH BUCK inductors.
 
 ## Open questions / decisions pending
 
-- LED indicator: add or stay haptic-only? (blocks M2 start)
+- ~~LED indicator: add or stay haptic-only? (blocks M2 start)~~ **DECIDED
+  2026-11-21: add LED + 0402 series resistor on P1.09.** BOM carries the rows.
 - Target fab/assembly house (affects DFM rules in M3 and stencil in M4).
 - Battery: keep 240 mAh HSZ 362123 (firmware fuel-gauge model is encoded in
   `battery_model.inc`) or different cell + firmware edit?

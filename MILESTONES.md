@@ -17,15 +17,22 @@ Clone boots the upstream firmware minus the OLED, pin-compatible.
       `display.c.obj`/`icons.c.obj`; `CONFIG_CLIP_DISPLAY`/`CONFIG_MCUBOOT_DISPLAY`
       not set in image configs
 
-## M1 — Costed BOM with alternates ☐
-- [ ] Per-block component list from `hardware_reference.md` §1 with exact
+## M1 — Costed BOM with alternates ✅
+- [x] Per-block component list from `hardware_reference.md` §1 with exact
       MPNs, packages, distributor stock (2+), unit price at qty 10
-- [ ] Firmware-encoded specs cross-checked against datasheets (nPM1300 charger
+- [x] Firmware-encoded specs cross-checked against datasheets (nPM1300 charger
       220 mA / NTC β 3380 / flash JEDEC `85 20 17` / PDM L-R / 240 mAh cell w/
       NTC) — non-substitutable parts flagged
-- [ ] Passives standardized (0402, stock values)
-- **Acceptance:** `bom/bom.csv` complete, every line has a 2nd source; open
-  substitutions (if any) listed with required firmware edits.
+- [x] Passives standardized (0402, stock values)
+- **Acceptance:** `bom/bom.csv` complete — 24 rows, every line has a 2nd
+  source or an explicit FLAG (battery + magnetic pogo: factory-direct only;
+  T5838 + exact Puya: single-distis until Dec-2026). Open substitutions with
+  firmware edits: flash swap → `jedec-id` DTS edit; different cell →
+  `battery_model.inc` OCV re-characterization; Knowles mic → gain-table
+  revisit. Datasheet verdicts: all 4 firmware-encoded nPM1300 values
+  supported (PS v1.3) — note reset defaults VTERM 3.60 V / VBUS 100 mA are
+  host-configured (our firmware does this); nPM1300 BUCKs need **2.2 µH**
+  inductors (not 1.5 µH); nRF5340 QKAA is **aQFN-94** (not aQFN73).
 
 ## M2 — KiCad schematic ☐
 - [ ] Project skeleton, 4-layer stackup decided
@@ -61,7 +68,10 @@ Clone boots the upstream firmware minus the OLED, pin-compatible.
   snippet), SD power-gating engages after 45 s, recording < 80 mA.
 
 ## Deferred / decisions log
-- No OLED → no visual UI (haptic + button only). Optional LED on spare GPIO
-  (P1.02/P1.03/P1.08/P1.09 free) — decide by M2.
+- No OLED → no visual UI (haptic + button only). ~~Optional LED on spare GPIO
+  (P1.02/P1.03/P1.08/P1.09 free) — decide by M2.~~ **DECIDED (M1): add a
+  status LED + 0402 series resistor on spare GPIO P1.09 (formerly OLED
+  reset).** No firmware consequence today (P1.09 is unused in the no-OLED
+  tree); an LED app module is future work, not M1 scope.
 - Keep coex PTA pins (P0.25/28/30/31) for now; revisit if antenna switch is
   simplified.

@@ -8,11 +8,11 @@ reSpeaker_Clip firmware repo.
 
 | Function | Part (as used on Clip) | Key specs / notes |
 |---|---|---|
-| MCU | Nordic **nRF5340 QKAA** (dual Cortex-M33) | DCDC mode for main+radio regulators; 1MB flash / 512KB RAM |
+| MCU | Nordic **nRF5340 QKAA** (dual Cortex-M33) | DCDC mode for main+radio regulators; 1MB flash / 512KB RAM; package **aQFN-94, 7×7 mm** (orderable NRF5340-QKAA-R) |
 | WiFi/BLE coexist | **nRF7002** module (QSPI) | iovdd-ctrl P0.26, BUCKEN P0.11, HOST_IRQ P0.12, QSPI 24 MHz quad |
-| PMIC / Charger | **Nordic nPM1300** @ I2C1 addr 0x6B | Li charger 220 mA, term 4.25 V, VBUS limit 500 mA, NTC 10 kΩ β=3380 |
-| Microphones | Dual **PDM** mics (T5838-class), up to 16 kHz | L+R on shared CLK/DIN; rail 1.8 V |
-| External flash | **Puya PY25Q64H** 8 MB SPI-NOR (quad) | JEDEC ID 85 20 17; max 24 MHz used; own rail flash_vdd |
+| PMIC / Charger | **Nordic nPM1300** @ I2C1 addr 0x6B | Li charger 220 mA, term 4.25 V, VBUS limit 500 mA, NTC 10 kΩ β=3380. Datasheet-checked (PS v1.3): all four values are supported — but PMIC reset default is VTERM 3.60 V / VBUS limit 100 mA, so the host **must** configure them at boot (this firmware already does). 220 mA confirmed in range (32–800 mA); β=3380 is an explicit supported NTC profile |
+| Microphones | Dual **PDM** mics (T5838-class), up to 16 kHz | L+R on shared CLK/DIN; rail 1.8 V. T5838 = **TDK InvenSense MMICT5838-00-012** (bottom port, LGA 3.5×2.65); obtainable sub: **Knowles SPH0641LU4H-1** (same L/R convention, no firmware change; gain table revisit at bring-up) |
+| External flash | **Puya PY25Q64H** 8 MB SPI-NOR (quad) | JEDEC ID 85 20 17; max 24 MHz used; own rail flash_vdd. Orderable **PY25Q64HA-SUH-IR** (LCSC only — Puya not franchised at DK/Mouser); ⚠ NOT P25Q64H (JEDEC 85 60 17, fails DTS check). Second sources (Winbond W25Q64JVSSIQ etc.) need a `jedec-id` DTS edit |
 | Storage | microSD (FAT) over SPI4 @ 24 MHz | Own rail VDD_SD (LDO2, power-gated) |
 | Battery | Li-Po **HSZ 362123, 240 mAh**, 4.20 V cell | On-cell protection IC; NTC to PMIC TS pin |
 | Haptic | LRA/ERM vibration motor on BUCK1 (3.3 V) | Switched via nPM1300 GPIO1 (host drives P1.06 → PMIC GPIO1) |
@@ -20,6 +20,9 @@ reSpeaker_Clip firmware repo.
 | Charging connector | 4-pin magnetic (pogo) | VBUS, GND + 2 pins (comms/NTC per Seeed base design) |
 | Crystals | 32 MHz HFXO + 32.768 kHz LFXO | **No external load caps** — internal caps tuned (HFXO 9 pF, LFXO 7 pF) |
 | DCDC inductors | **2× 10 µH** (L1, L2) for nRF5340 vregmain/vregradio | Mandatory for the ~500–600 µA DCDC saving |
+| nPM1300 BUCK inductors | **2× 2.2 µH** (BUCK1, BUCK2) | Per nPM1300 PS v1.3 Table 3: nominal 2.2 µH, ≤20 %, DCR ≤400 mΩ, Isat >350 mA, ≥4 µF effective out cap. Distinct from the nRF5340 10 µH parts — do not reuse |
+| RF antenna switch | SPDT 2.4 GHz on rfsw_vdd (P0.29 rail) | GPIO-controlled (active-high select), 1.8–3.3 V; candidate **pSemi PE42359SCAA-Z** (PE4259-63 cross, same footprint/control) |
+| Status LED (rev-B add) | 0402 green LED + 0402 1 kΩ series R on **P1.09** | ~1–1.2 mA when on, 0 when off; P1.09 freed by OLED removal |
 
 ## 2. Power tree
 
