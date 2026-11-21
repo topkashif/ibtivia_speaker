@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: Apache-2.0
+
+cmake_minimum_required(VERSION 3.20)
+
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+project(clip)
+
+# Factory SN backup section at a fixed address in the app-slot tail,
+# outside the linked image (see linker/sn_reserve.ld). SECTIONS places
+# it after the whole image, so the jump to 0xFE000 only works while the
+# image ends below it — the overlap guard falls out of the linker.
+zephyr_linker_sources(SECTIONS linker/sn_reserve.ld)
+
+# Include directories
+target_include_directories(app PRIVATE include)
+
+# Source files
+target_sources(app PRIVATE
+    src/main.c
+    src/clip_event.c
+    src/config.c
+    src/ble.c
+    src/transport.c
+    src/transport_ble.c
+    src/at_server.c
+    src/at_commands.c
+    src/audio.c
+    src/storage.c
+    src/transfer.c
+    src/rtc_stream.c
+    src/haptic.c
+    src/button.c
+    src/wifi.c
+    src/wifi_udp.c
+    src/transport_udp.c
+    src/battery.c
+    src/usb_cdc.c
+)
+
+# Display UI — only compiled when the board has the OLED (CONFIG_CLIP_DISPLAY)
+target_sources_ifdef(CONFIG_CLIP_DISPLAY app PRIVATE
+    src/display.c
+    src/icons.c
+)

@@ -1,0 +1,1147 @@
+/*
+ * Copyright (c) 2025 Seeed Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <zephyr/kernel.h>
+#include <zephyr/random/random.h>
+#include <string.h>
+#include <zephyr/logging/log.h>
+#include <zephyr/fs/fs.h>
+#include <zephyr/fs/littlefs.h>
+#include <zephyr/storage/flash_map.h>
+#include <zephyr/drivers/flash.h>
+#include <zephyr/settings/settings.h>
+#include <zephyr/sys/reboot.h>
+#include <zephyr/sys/crc.h>
+#include <time.h>
+
+#include "clip.h"
+#include "config.h"
+#include "clip_sn.h"
+
+LOG_MODULE_REGISTER(config, LOG_LEVEL_WRN); /* flash budget: INF kept for battery/wifi/storage/button/audio/main */
+
+/* Settings keys */
+#define SETTING_MODE            "config/mode"
+#define SETTING_NOISE_SUPPRESS  "config/noise_suppress"
+#define SETTING_DEREVERB        "config/dereverb_enabled"
+#define SETTING_BRIGHTNESS      "config/oled_brightness"
+#define SETTING_WIFI_PASSWORD   "config/wifi_password"
+#define SETTING_DEVICE_NAME     "config/device_name"
+#define SETTING_WIFI_CHANNEL    "config/wifi_channel"
+#define SETTING_WIFI_REG_DOMAIN "config/wifi_reg_domain"
+#define SETTING_TIME_UNIX       "time/unix_timestamp"
+#define SETTING_SN              "sn/value"
+
+/* Product serial number (written once at the factory; lives in its own
+ * settings subtree so AT+FACTORY — which only resets config/ keys —
+ * preserves it). ASCII [A-Za-z0-9._-], 1..CLIP_SN_MAX_LEN chars. */
+#define CLIP_SN_MAX_LEN 32
+static char g_serial_number[CLIP_SN_MAX_LEN + 1];
+
+/* ---- Factory SN dual backup (fixed linker section, outside the image) ----
+ *
+ * The settings file is a high-churn area: BLE pair/unpair writes, power
+ * cuts mid-save, and the corrupt-file watchdog wipe (fs_unlink) all
+ * regularly destroy it — and the SN went down with it. The SN is
+ * one-time factory data, so it now also lives in the .sn_backup linker
+ * section at a FIXED address (0xFE000) in the app-slot tail — outside
+ * the linked image (linker/sn_reserve.ld reserves it, NOLOAD, and the
+ * linker refuses to grow the image past it):
+ *  - OTA / MCUboot copy only the image, never this far
+ *  - the watchdog wipe, erase-settings and LittleFS live in external
+ *    flash and cannot reach it
+ *  - J-Link app flashing only writes the image area
+ * Two records with per-record CRC32 and a write sequence number share
+ * the one reserved sector; a write erases the sector and programs both.
+ * Boot picks the valid record with the highest seq and rewrites the
+ * pair if they disagree. The settings-file copy stays as a tertiary
+ * mirror and migration source for units upgraded from older firmware.
+ * The record format is shared with the factory tool (tests/clip
+ * sn_prog.c) via clip_sn.h. */
+BUILD_ASSERT(sizeof(struct clip_sn_record) == 48);
+
+static int sn_file_write(const struct clip_sn_record *rec);
+
+extern uint8_t __sn_backup_start[]; /* linker: 0xFE000, one 4KB sector */
+#define SN_SECTOR_ADDR   ((uintptr_t)__sn_backup_start)
+#define SN_SLOT_OFF_A    0
+#define SN_SLOT_OFF_B    0x100
+
+static uint32_t g_sn_seq; /* seq of the newest valid on-flash record */
+
+static const struct device *sn_flash_dev(void)
+{
+    const struct device *dev =
+        DEVICE_DT_GET(DT_CHOSEN(zephyr_flash_controller));
+
+    if (!device_is_ready(dev)) {
+        return NULL;
+    }
+    return dev;
+}
+
+static int sn_read_slot(struct clip_sn_record *rec, uint32_t off)
+{
+    memcpy(rec, (const void *)(SN_SECTOR_ADDR + off), sizeof(*rec));
+    if (rec->magic != CLIP_SN_MAGIC || rec->len == 0 ||
+        rec->len > CLIP_SN_MAX_LEN || rec->sn[rec->len] != '\0' ||
+        rec->crc != crc32_ieee((const uint8_t *)rec,
+                                offsetof(struct clip_sn_record, crc))) {
+        return -EINVAL;
+    }
+    return 0;
+}
+
+/* Erase the sector and program both records. */
+static int sn_write_both(const struct clip_sn_record *rec)
+{
+    const struct device *dev = sn_flash_dev();
+    int rc;
+
+    if (dev == NULL) {
+        return -ENODEV;
+    }
+    rc = flash_erase(dev, SN_SECTOR_ADDR, 0x1000);
+    if (rc != 0) {
+        return rc;
+    }
+    rc = flash_write(dev, SN_SECTOR_ADDR + SN_SLOT_OFF_A, rec, sizeof(*rec));
+    if (rc != 0) {
+        return rc;
+    }
+    return flash_write(dev, SN_SECTOR_ADDR + SN_SLOT_OFF_B, rec, sizeof(*rec));
+}
+
+static int sn_ab_write(const char *sn, size_t len)
+{
+    struct clip_sn_record rec = {0};
+
+    rec.magic = CLIP_SN_MAGIC;
+    rec.seq = g_sn_seq + 1;
+    rec.len = len;
+    memcpy(rec.sn, sn, len);
+    rec.crc = crc32_ieee((const uint8_t *)&rec,
+                          offsetof(struct clip_sn_record, crc));
+
+    int rc = sn_write_both(&rec);
+    if (rc != 0) {
+        return rc;
+    }
+    g_sn_seq = rec.seq;
+
+    /* The sn.bin mirror is best-effort: a failure here is logged and
+     * healed at the next boot (the internal pair is authoritative this
+     * session). */
+    if (sn_file_write(&rec) != 0) {
+        LOG_WRN("SN file copy write failed, will heal at next boot");
+    }
+    return 0;
+}
+
+/* Second/third insurance: an independent LittleFS file (/lfs/sn.bin)
+ * written through the normal filesystem API — no raw flash access, no
+ * partition/geometry change (paired devices and the frozen MCUboot
+ * never see a difference). A separate inode from the settings file, so
+ * settings-file corruption and the watchdog's file-scoped unlink leave
+ * it alone. The settings key (sn/value) stays as the migration source
+ * for units upgraded from older firmware. */
+#define SN_FILE_PATH "/lfs/sn.bin"
+
+static int sn_file_read(struct clip_sn_record *rec)
+{
+    struct fs_file_t f;
+    int rc;
+
+    fs_file_t_init(&f);
+    rc = fs_open(&f, SN_FILE_PATH, FS_O_READ);
+    if (rc != 0) {
+        return rc;
+    }
+    rc = fs_read(&f, rec, sizeof(*rec));
+    fs_close(&f);
+    if (rc != (ssize_t)sizeof(*rec)) {
+        return -EINVAL;
+    }
+    if (rec->magic != CLIP_SN_MAGIC || rec->len == 0 ||
+        rec->len > CLIP_SN_MAX_LEN || rec->sn[rec->len] != '\0' ||
+        rec->crc != crc32_ieee((const uint8_t *)rec,
+                                offsetof(struct clip_sn_record, crc))) {
+        return -EINVAL;
+    }
+    return 0;
+}
+
+static int sn_file_write(const struct clip_sn_record *rec)
+{
+    struct fs_file_t f;
+    int rc;
+
+    fs_file_t_init(&f);
+    rc = fs_open(&f, SN_FILE_PATH, FS_O_CREATE | FS_O_WRITE | FS_O_TRUNC);
+    if (rc != 0) {
+        return rc;
+    }
+    rc = fs_write(&f, rec, sizeof(*rec));
+    if (rc != (ssize_t)sizeof(*rec)) {
+        rc = -EIO;
+    } else {
+        rc = 0;
+    }
+    fs_close(&f);
+    return rc;
+}
+
+/* Boot: pick the best record across all copies (internal fixed-section
+ * pair, sn.bin; the settings value is the seq-less migration fallback),
+ * adopt it, and rewrite every stale copy so all agree. */
+static void sn_ab_init(void)
+{
+    struct clip_sn_record int_a, int_b, file_rec;
+    int rc_ia = sn_read_slot(&int_a, SN_SLOT_OFF_A);
+    int rc_ib = sn_read_slot(&int_b, SN_SLOT_OFF_B);
+    int rc_f = sn_file_read(&file_rec);
+
+    struct clip_sn_record *best = NULL;
+    struct clip_sn_record *cands[] = {NULL, NULL, NULL};
+    int n = 0;
+    if (rc_ia == 0) {
+        cands[n++] = &int_a;
+    }
+    if (rc_ib == 0) {
+        cands[n++] = &int_b;
+    }
+    if (rc_f == 0) {
+        cands[n++] = &file_rec;
+    }
+    for (int i = 0; i < n; i++) {
+        if (best == NULL || cands[i]->seq > best->seq) {
+            best = cands[i];
+        }
+    }
+
+    if (best == NULL) {
+        if (g_serial_number[0] != '\0') {
+            int rc = sn_ab_write(g_serial_number, strlen(g_serial_number));
+            LOG_WRN("SN migrated to backup copies: %d", rc);
+        }
+        return;
+    }
+
+    g_sn_seq = best->seq;
+    if (strcmp(g_serial_number, best->sn) != 0) {
+        /* The fixed-section/file copies win over the settings mirror:
+         * they are the copies the watchdog wipe / reformat can only
+         * partially reach. */
+        size_t len = best->len;
+        memcpy(g_serial_number, best->sn, len);
+        g_serial_number[len] = '\0';
+        if (g_serial_number[0] != '\0') {
+            (void)settings_save_one(SETTING_SN, g_serial_number, len);
+        }
+        LOG_WRN("SN restored from backup copy (settings disagreed)");
+    }
+
+    /* Bring every copy up to the winning record. */
+    bool int_ok = (rc_ia == 0 && int_a.seq == best->seq &&
+                   memcmp(int_a.sn, best->sn, CLIP_SN_MAX_LEN) == 0) &&
+                  (rc_ib == 0 && int_b.seq == best->seq &&
+                   memcmp(int_b.sn, best->sn, CLIP_SN_MAX_LEN) == 0);
+    if (!int_ok && sn_write_both(best) == 0) {
+        LOG_WRN("SN internal backup pair restored");
+    }
+    if (!(rc_f == 0 && file_rec.seq == best->seq &&
+          memcmp(file_rec.sn, best->sn, CLIP_SN_MAX_LEN) == 0)) {
+        if (sn_file_write(best) == 0) {
+            LOG_WRN("SN file copy restored");
+        }
+    }
+}
+
+/* settings_load is normally <100 ms. A corrupt settings file (typically
+ * from repeated BLE pair/unpair churning bond records) makes it block for
+ * ~40 seconds, and it cannot be interrupted — so a watchdog on a separate
+ * thread wipes the file and reboots at this timeout; the next boot loads
+ * clean. Wipe loses bonds + app config + time. */
+#define SETTINGS_LOAD_TIMEOUT_MS        CONFIG_CLIP_SETTINGS_LOAD_TIMEOUT_MS
+
+/* Config entry for settings handler */
+struct config_entry {
+    const char *name;
+    size_t offset;
+    size_t size;
+};
+
+/* Config entries table */
+static const struct config_entry config_table[] = {
+    { SETTING_MODE,           offsetof(struct clip_config, mode),           sizeof(uint8_t) },
+    { SETTING_NOISE_SUPPRESS, offsetof(struct clip_config, noise_suppress), sizeof(uint8_t) },
+    { SETTING_DEREVERB,       offsetof(struct clip_config, dereverb_enabled), sizeof(bool) },
+    { SETTING_BRIGHTNESS,       offsetof(struct clip_config, oled_brightness),  sizeof(uint8_t) },
+    { SETTING_WIFI_PASSWORD,    offsetof(struct clip_config, wifi_password),    sizeof(char[9]) },
+    { SETTING_DEVICE_NAME,      offsetof(struct clip_config, device_name),      sizeof(char[257]) },
+    { SETTING_WIFI_CHANNEL,     offsetof(struct clip_config, wifi_channel),     sizeof(uint8_t) },
+    { SETTING_WIFI_REG_DOMAIN,  offsetof(struct clip_config, wifi_reg_domain), sizeof(char[3]) },
+};
+
+#define CONFIG_TABLE_SIZE (sizeof(config_table) / sizeof(config_table[0]))
+
+/* Settings handler for config */
+static int config_settings_set(const char *name, size_t len,
+                               settings_read_cb read_cb, void *cb_arg)
+{
+    struct clip_context *ctx = clip_get_context();
+
+    if (!name) {
+        return -ENOENT;
+    }
+
+    for (size_t i = 0; i < CONFIG_TABLE_SIZE; i++) {
+        const struct config_entry *entry = &config_table[i];
+        const char *key = entry->name + 7;  /* Skip "config/" */
+
+        if (strcmp(name, key) == 0) {
+            int rc = read_cb(cb_arg, (uint8_t *)&ctx->config + entry->offset,
+                             entry->size);
+            if (rc < 0) {
+                return rc;
+            }
+            return 0;
+        }
+    }
+
+    return -ENOENT;
+}
+
+static struct settings_handler config_handler = {
+    .name = "config",
+    .h_set = config_settings_set,
+};
+
+/* Settings handler for time */
+static int time_settings_set(const char *name, size_t len,
+                             settings_read_cb read_cb, void *cb_arg)
+{
+    struct clip_context *ctx = clip_get_context();
+
+    if (!name || strcmp(name, "unix_timestamp") != 0) {
+        return -ENOENT;
+    }
+
+    int64_t saved_unix_time;
+    int rc = read_cb(cb_arg, &saved_unix_time, sizeof(saved_unix_time));
+    if (rc != sizeof(saved_unix_time)) {
+        return -EINVAL;
+    }
+
+    /* Restore time from storage */
+    time_t unix_time = (time_t)saved_unix_time;
+    struct tm tm;
+    gmtime_r(&unix_time, &tm);
+
+    ctx->time.year = tm.tm_year + 1900;
+    ctx->time.month = tm.tm_mon + 1;
+    ctx->time.day = tm.tm_mday;
+    ctx->time.hour = tm.tm_hour;
+    ctx->time.min = tm.tm_min;
+    ctx->time.sec = tm.tm_sec;
+    ctx->time.base_uptime_ms = k_uptime_get();
+    ctx->time.valid = true;
+    /* Restored, not synced: the power-off gap is unknowable (no RTC).
+     * Stays true until a live AT+TIME sync arrives. */
+    ctx->time.restored = true;
+
+    return 0;
+}
+
+static struct settings_handler time_handler = {
+    .name = "time",
+    .h_set = time_settings_set,
+};
+
+/* Settings handler for the factory SN */
+static int sn_settings_set(const char *name, size_t len,
+                           settings_read_cb read_cb, void *cb_arg)
+{
+    if (!name || strcmp(name, "value") != 0) {
+        return -ENOENT;
+    }
+
+    /* LittleFS settings may hand us more than the buffer holds: read into
+     * a bounded stack copy, then validate the length. */
+    char buf[sizeof(g_serial_number)];
+    ssize_t rc = read_cb(cb_arg, buf, sizeof(buf) - 1);
+    if (rc < 0) {
+        return rc;
+    }
+    if (rc == 0 || (size_t)rc >= sizeof(g_serial_number)) {
+        return -EINVAL;
+    }
+    buf[rc] = '\0';
+
+    memcpy(g_serial_number, buf, (size_t)rc + 1);
+    return 0;
+}
+
+static struct settings_handler sn_handler = {
+    .name = "sn",
+    .h_set = sn_settings_set,
+};
+
+/* LittleFS mount configuration */
+FS_LITTLEFS_DECLARE_DEFAULT_CONFIG(lfs_storage_cfg);
+
+static struct fs_mount_t lfs_mnt = {
+    .type = FS_LITTLEFS,
+    .fs_data = &lfs_storage_cfg,
+    .mnt_point = "/lfs",
+    .storage_dev = (void *)FIXED_PARTITION_ID(lfs_storage),
+};
+
+static int mount_littlefs(void)
+{
+    int rc = fs_mount(&lfs_mnt);
+    if (rc != 0 && rc != -EBUSY) {
+        LOG_ERR("LittleFS mount failed: %d", rc);
+        return rc;
+    }
+    LOG_INF("LittleFS mounted at %s", lfs_mnt.mnt_point);
+    return 0;
+}
+
+/* Set default configuration values */
+static void config_set_defaults(struct clip_context *ctx)
+{
+    ctx->config.mode = MODE_NORMAL;
+    ctx->config.noise_suppress = CONFIG_CLIP_DEFAULT_NOISE;
+    ctx->config.dereverb_enabled = IS_ENABLED(CONFIG_CLIP_DEFAULT_DEREVERB);
+    ctx->config.oled_brightness = CONFIG_CLIP_DEFAULT_BRIGHTNESS;
+    ctx->config.wifi_password[0] = '\0';
+    ctx->config.device_name[0] = '\0';
+    ctx->config.wifi_channel = CONFIG_CLIP_WIFI_AP_CHANNEL;
+    strncpy(ctx->config.wifi_reg_domain, CONFIG_CLIP_WIFI_AP_REG_DOMAIN, 3);
+}
+
+/* settings_load watchdog. `done` is published by the thread that called
+ * settings_load once it returns; the watchdog (on the system workqueue)
+ * checks it under settings_load_mu. The lock closes a TOCTOU where the
+ * handler had already read false and would unlink+reboot even though the
+ * load had just completed successfully. */
+static K_MUTEX_DEFINE(settings_load_mu);
+static bool settings_load_done;
+
+static void settings_load_watchdog_handler(struct k_work *work)
+{
+    (void)work;
+
+    k_mutex_lock(&settings_load_mu, K_FOREVER);
+
+    if (settings_load_done) {
+        k_mutex_unlock(&settings_load_mu);
+        return;
+    }
+
+    /* settings_load is still blocked past the timeout: the settings file
+     * is corrupt and the load can't be interrupted. Wipe and reboot so
+     * the next boot loads clean defaults in <100 ms. */
+    LOG_WRN("settings_load stuck >%dms, wiping + reboot", SETTINGS_LOAD_TIMEOUT_MS);
+    fs_unlink(CONFIG_SETTINGS_FILE_PATH);
+
+    k_mutex_unlock(&settings_load_mu);
+    sys_reboot(SYS_REBOOT_COLD);
+}
+
+K_WORK_DELAYABLE_DEFINE(settings_load_watchdog, settings_load_watchdog_handler);
+
+/* Public arm/disarm so other modules (e.g. ble.c loading BT bonds) can
+ * guard their own settings_load_subtree() calls against a corrupt file. */
+void settings_load_watchdog_arm(void)
+{
+    k_mutex_lock(&settings_load_mu, K_FOREVER);
+    settings_load_done = false;
+    k_mutex_unlock(&settings_load_mu);
+    k_work_schedule(&settings_load_watchdog, K_MSEC(SETTINGS_LOAD_TIMEOUT_MS));
+}
+
+void settings_load_watchdog_disarm(void)
+{
+    /* Publish completion before cancelling: if the handler already started,
+     * it blocks on settings_load_mu until we release, then sees done=true
+     * and returns without touching the file. */
+    k_mutex_lock(&settings_load_mu, K_FOREVER);
+    settings_load_done = true;
+    k_mutex_unlock(&settings_load_mu);
+
+    struct k_work_sync sync;
+    k_work_cancel_delayable_sync(&settings_load_watchdog, &sync);
+}
+
+int config_init(void)
+{
+    struct clip_context *ctx = clip_get_context();
+    int err;
+
+    /* Set defaults first */
+    config_set_defaults(ctx);
+
+    /* Mount LittleFS */
+    err = mount_littlefs();
+    if (err) {
+        LOG_WRN("LittleFS mount failed: %d", err);
+        return 0;  /* Continue with defaults */
+    }
+
+    // /* TEMPORARY: Clear all settings to fix pairing issues */
+    // LOG_WRN("=== CLEARING ALL SETTINGS ===");
+
+    // /* Delete the settings file to clear all data */
+    // int rc = fs_unlink(CONFIG_SETTINGS_FILE_PATH);
+    // if (rc == 0) {
+    //     LOG_INF("settings deleted, data cleared");
+    // } else {
+    //     LOG_WRN("settings unlink %d (may not exist)", rc);
+    // }
+
+    /* Initialize settings subsystem */
+    err = settings_subsys_init();
+    if (err) {
+        LOG_WRN("Settings init failed: %d", err);
+        return 0;
+    }
+
+    /* Register handlers */
+    err = settings_register(&config_handler);
+    if (err && err != -EEXIST) {
+        LOG_WRN("Config handler register failed: %d", err);
+    }
+
+    err = settings_register(&time_handler);
+    if (err && err != -EEXIST) {
+        LOG_WRN("Time handler register failed: %d", err);
+    }
+
+    err = settings_register(&sn_handler);
+    if (err && err != -EEXIST) {
+        LOG_WRN("SN handler register failed: %d", err);
+    }
+
+    /* Arm the settings-load watchdog before the blocking load. */
+    settings_load_watchdog_arm();
+
+    /* Load config settings */
+    err = settings_load_subtree("config");
+
+    /* Factory SN lives in the same settings file — load it under the same
+     * watchdog guard. config_init used to end with a full settings_load()
+     * which restored every subtree; the boot hardening replaced that with
+     * per-subtree loads, and the SN subtree was never added to the list —
+     * AT+SN wrote the value but every reboot loaded nothing back. */
+    settings_load_subtree("sn");
+
+    settings_load_watchdog_disarm();
+
+    if (err) {
+        LOG_WRN("config load %d, save defaults", err);
+        config_save();
+    } else {
+        LOG_INF("Config loaded: mode=%d", ctx->config.mode);
+    }
+
+    /* Load time settings (optional) */
+    settings_load_subtree("time");
+
+    /* Adopt / migrate / heal the raw dual-backup SN copies (settings
+     * value, if any, is the migration source). */
+    sn_ab_init();
+
+    LOG_INF("Configuration initialized");
+
+    /* Generate WiFi password if not set */
+    if (ctx->config.wifi_password[0] == '\0') {
+        config_generate_wifi_password();
+    }
+
+    return 0;
+}
+
+int config_load(void)
+{
+    return settings_load();
+}
+
+int config_save(void)
+{
+    struct clip_context *ctx = clip_get_context();
+    int err;
+
+    for (size_t i = 0; i < CONFIG_TABLE_SIZE; i++) {
+        const struct config_entry *entry = &config_table[i];
+        err = settings_save_one(entry->name,
+                               (const uint8_t *)&ctx->config + entry->offset,
+                               entry->size);
+        if (err) {
+            LOG_ERR("Failed to save %s: %d", entry->name, err);
+            return err;
+        }
+    }
+
+    return 0;
+}
+
+int config_factory_reset(void)
+{
+    struct clip_context *ctx = clip_get_context();
+    config_set_defaults(ctx);
+    return config_save();
+}
+
+static const char *key_to_setting(uint16_t key)
+{
+    switch (key) {
+    case CONFIG_KEY_MODE:       return SETTING_MODE;
+    case CONFIG_KEY_NOISE:      return SETTING_NOISE_SUPPRESS;
+    case CONFIG_KEY_DEREVERB:   return SETTING_DEREVERB;
+    case CONFIG_KEY_BRIGHTNESS: return SETTING_BRIGHTNESS;
+    case CONFIG_KEY_WIFI_PASSWORD: return SETTING_WIFI_PASSWORD;
+    case CONFIG_KEY_DEVICE_NAME:   return SETTING_DEVICE_NAME;
+    case CONFIG_KEY_WIFI_CHANNEL:    return SETTING_WIFI_CHANNEL;
+    case CONFIG_KEY_WIFI_REG_DOMAIN: return SETTING_WIFI_REG_DOMAIN;
+    default:                    return NULL;
+    }
+}
+
+int config_set(uint16_t key, const void *value, size_t len)
+{
+    struct clip_context *ctx = clip_get_context();
+    int ret = 0;
+
+    /* Update in-memory config */
+    switch (key) {
+    case CONFIG_KEY_MODE:
+        if (len == sizeof(uint8_t)) {
+            ctx->config.mode = *(const uint8_t *)value;
+        } else {
+            ret = -EINVAL;
+        }
+        break;
+    case CONFIG_KEY_NOISE:
+        if (len == sizeof(uint8_t)) {
+            ctx->config.noise_suppress = *(const uint8_t *)value;
+        } else {
+            ret = -EINVAL;
+        }
+        break;
+    case CONFIG_KEY_DEREVERB:
+        if (len == sizeof(bool)) {
+            ctx->config.dereverb_enabled = *(const bool *)value;
+        } else {
+            ret = -EINVAL;
+        }
+        break;
+    case CONFIG_KEY_BRIGHTNESS:
+        if (len == sizeof(uint8_t)) {
+            ctx->config.oled_brightness = *(const uint8_t *)value;
+        } else {
+            ret = -EINVAL;
+        }
+        break;
+    case CONFIG_KEY_WIFI_PASSWORD:
+        if (len <= 8) {
+            strncpy(ctx->config.wifi_password, value, len);
+            ctx->config.wifi_password[len] = '\0';
+        } else {
+            ret = -EINVAL;
+        }
+        break;
+    case CONFIG_KEY_DEVICE_NAME:
+        if (len <= 256) {
+            strncpy(ctx->config.device_name, value, len);
+            ctx->config.device_name[len] = '\0';
+        } else {
+            ret = -EINVAL;
+        }
+        break;
+    case CONFIG_KEY_WIFI_CHANNEL:
+        if (len == sizeof(uint8_t)) {
+            ctx->config.wifi_channel = *(const uint8_t *)value;
+        } else {
+            ret = -EINVAL;
+        }
+        break;
+    case CONFIG_KEY_WIFI_REG_DOMAIN:
+        if (len == 2 && value) {
+            memcpy(ctx->config.wifi_reg_domain, value, 2);
+            ctx->config.wifi_reg_domain[2] = '\0';
+        } else {
+            ret = -EINVAL;
+        }
+        break;
+    default:
+        return -EINVAL;
+    }
+
+    if (ret) {
+        return ret;
+    }
+
+    /* Save to storage */
+    const char *setting = key_to_setting(key);
+    if (setting) {
+        return settings_save_one(setting, value, len);
+    }
+
+    return 0;
+}
+
+int config_get(uint16_t key, void *value, size_t len)
+{
+    struct clip_context *ctx = clip_get_context();
+
+    switch (key) {
+    case CONFIG_KEY_MODE:
+        if (len == sizeof(uint8_t)) {
+            *(uint8_t *)value = ctx->config.mode;
+            return 0;
+        }
+        break;
+    case CONFIG_KEY_NOISE:
+        if (len == sizeof(uint8_t)) {
+            *(uint8_t *)value = ctx->config.noise_suppress;
+            return 0;
+        }
+        break;
+    case CONFIG_KEY_DEREVERB:
+        if (len == sizeof(bool)) {
+            *(bool *)value = ctx->config.dereverb_enabled;
+            return 0;
+        }
+        break;
+    case CONFIG_KEY_BRIGHTNESS:
+        if (len == sizeof(uint8_t)) {
+            *(uint8_t *)value = ctx->config.oled_brightness;
+            return 0;
+        }
+        break;
+    case CONFIG_KEY_WIFI_PASSWORD:
+        if (len >= 9) {
+            strncpy(value, ctx->config.wifi_password, 9);
+            return 0;
+        }
+        break;
+    case CONFIG_KEY_DEVICE_NAME:
+        if (len > 0) {
+            char *dst = (char *)value;
+            strncpy(dst, ctx->config.device_name, len);
+            dst[len - 1] = '\0';
+            return 0;
+        }
+        break;
+    case CONFIG_KEY_WIFI_CHANNEL:
+        if (len == sizeof(uint8_t)) {
+            *(uint8_t *)value = ctx->config.wifi_channel;
+            return 0;
+        }
+        break;
+    case CONFIG_KEY_WIFI_REG_DOMAIN:
+        if (len >= 3) {
+            strncpy(value, ctx->config.wifi_reg_domain, 3);
+            return 0;
+        }
+        break;
+    default:
+        return -EINVAL;
+    }
+
+    return -EINVAL;
+}
+
+int config_set_time(int64_t unix_time)
+{
+    struct clip_context *ctx = clip_get_context();
+
+    /* Update in-memory time */
+    time_t t = (time_t)unix_time;
+    struct tm tm;
+    gmtime_r(&t, &tm);
+
+    ctx->time.year = tm.tm_year + 1900;
+    ctx->time.month = tm.tm_mon + 1;
+    ctx->time.day = tm.tm_mday;
+    ctx->time.hour = tm.tm_hour;
+    ctx->time.min = tm.tm_min;
+    ctx->time.sec = tm.tm_sec;
+    ctx->time.base_uptime_ms = k_uptime_get();
+    ctx->time.valid = true;
+    ctx->time.restored = false;   /* live sync */
+
+    /* Save to storage */
+    return settings_save_one(SETTING_TIME_UNIX, &unix_time, sizeof(unix_time));
+}
+
+int config_get_time(int64_t *unix_time)
+{
+    struct clip_context *ctx = clip_get_context();
+
+    if (!unix_time) {
+        return -EINVAL;
+    }
+
+    if (!ctx->time.valid) {
+        return -ENODATA;
+    }
+
+    /* Calculate current Unix time */
+    int64_t elapsed_ms = k_uptime_get() - ctx->time.base_uptime_ms;
+    int64_t elapsed_sec = elapsed_ms / 1000;
+
+    /* Convert to Unix timestamp */
+    struct tm tm = {
+        .tm_year = ctx->time.year - 1900,
+        .tm_mon = ctx->time.month - 1,
+        .tm_mday = ctx->time.day,
+        .tm_hour = ctx->time.hour,
+        .tm_min = ctx->time.min,
+        .tm_sec = ctx->time.sec,
+    };
+    *unix_time = (int64_t)mktime(&tm) + elapsed_sec;
+
+    return 0;
+}
+
+/* Convenience functions for individual config items */
+int config_set_time_ymd(uint16_t year, uint8_t month, uint8_t day,
+                        uint8_t hour, uint8_t min, uint8_t sec)
+{
+    struct clip_context *ctx = clip_get_context();
+
+    /* Convert to Unix timestamp */
+    struct tm tm = {
+        .tm_year = year - 1900,
+        .tm_mon = month - 1,
+        .tm_mday = day,
+        .tm_hour = hour,
+        .tm_min = min,
+        .tm_sec = sec,
+    };
+    time_t unix_time = mktime(&tm);
+    if (unix_time == -1) {
+        return -EINVAL;
+    }
+
+    ctx->time.year = year;
+    ctx->time.month = month;
+    ctx->time.day = day;
+    ctx->time.hour = hour;
+    ctx->time.min = min;
+    ctx->time.sec = sec;
+    ctx->time.base_uptime_ms = k_uptime_get();
+    ctx->time.valid = true;
+    ctx->time.restored = false;   /* live sync */
+
+    return settings_save_one(SETTING_TIME_UNIX, &unix_time, sizeof(unix_time));
+}
+
+/* Rebuild the settings file system from the values already in RAM.
+ *
+ * The settings file accumulates unparseable lines over its life (pair/
+ * unpair churn rewriting bond records, power cuts mid-write); past some
+ * point every save becomes a full-file rewrite on the external flash —
+ * seconds per save, which stretches shutdown past any sane budget (the
+ * slow-poweroff / self-reboot field issue). Erasing the LittleFS
+ * superblock pair forces a fresh format on the next mount; everything
+ * the app owns is then re-saved from RAM.
+ *
+ * Callers: the AT+PAIR=reset path — unpair already clears bonds and
+ * formats the SD card, so the user-visible cost of the rebuild is zero;
+ * bonds would have been lost anyway, and the unsynced-audio flag
+ * correctly resets to false (the card was just wiped). This is why the
+ * heal lives at unpair and not at boot: it is invisible here.
+ *
+ * BLE bonds are NOT preserved (cleared by the caller before or by this
+ * wipe). SN, config, time and the fuel-gauge state survive via RAM +
+ * the re-saves below. */
+int config_reformat_settings(void)
+{
+    const struct flash_area *fa;
+    const struct device *flash_dev;
+    int rc;
+
+    /* Snapshot nothing: all owned values live in RAM for the whole boot
+     * session. Drop the mount, kill the superblock pair (the same
+     * 2 x 64 KB erase the MCUboot recovery command does), remount —
+     * LittleFS formats pristine. */
+    rc = fs_unmount(&lfs_mnt);
+    if (rc != 0 && rc != -EINVAL) {
+        LOG_WRN("settings heal: unmount %d", rc);
+        return rc;
+    }
+
+    rc = flash_area_open(FIXED_PARTITION_ID(lfs_storage), &fa);
+    if (rc != 0) {
+        LOG_WRN("settings heal: flash area %d", rc);
+        (void)mount_littlefs();
+        return rc;
+    }
+    flash_dev = flash_area_get_device(fa);
+    if (!device_is_ready(flash_dev)) {
+        LOG_WRN("settings heal: flash not ready");
+        flash_area_close(fa);
+        (void)mount_littlefs();
+        return -ENODEV;
+    }
+    rc = flash_erase(flash_dev, fa->fa_off, 0x20000); /* superblock pair */
+    flash_area_close(fa);
+    if (rc != 0) {
+        LOG_WRN("settings heal: erase %d", rc);
+        (void)mount_littlefs();
+        return rc;
+    }
+
+    rc = mount_littlefs();
+    if (rc != 0) {
+        return rc;
+    }
+
+    /* The settings file backend only creates its directory during
+     * settings_backend_init() at boot (mkdir_for_file); after this
+     * erase the directory is gone and every settings_save would fail
+     * with -ENOENT until the next reboot — silently defeating the
+     * re-saves below. Recreate it first. */
+    rc = fs_mkdir("/lfs/settings");
+    if (rc != 0 && rc != -EEXIST) {
+        LOG_WRN("settings heal: mkdir %d", rc);
+    }
+
+    LOG_WRN("settings heal: file system rebuilt");
+
+    /* Re-save everything we own, from RAM. */
+    (void)config_save();                       /* config keys */
+    (void)config_sync_time();                  /* time/unix_timestamp */
+    if (g_serial_number[0] != '\0') {          /* sn/value (factory SN) */
+        (void)settings_save_one(SETTING_SN, g_serial_number,
+                                strlen(g_serial_number));
+    }
+    return 0;
+}
+
+void config_sync_time(void)
+{
+    struct clip_context *ctx = clip_get_context();
+
+    if (!ctx->time.valid) {
+        return;
+    }
+
+    int64_t unix_time;
+    if (config_get_time(&unix_time) != 0) {
+        return;
+    }
+
+    time_t t = (time_t)unix_time;
+    struct tm tm;
+    gmtime_r(&t, &tm);
+
+    ctx->time.year = tm.tm_year + 1900;
+    ctx->time.month = tm.tm_mon + 1;
+    ctx->time.day = tm.tm_mday;
+    ctx->time.hour = tm.tm_hour;
+    ctx->time.min = tm.tm_min;
+    ctx->time.sec = tm.tm_sec;
+    ctx->time.base_uptime_ms = k_uptime_get();
+
+    settings_save_one(SETTING_TIME_UNIX, &unix_time, sizeof(unix_time));
+}
+
+const char *config_get_sn(void)
+{
+    return g_serial_number;
+}
+
+bool config_sn_is_set(void)
+{
+    return g_serial_number[0] != '\0';
+}
+
+/* Charset/length validation shared by both SN writers (single source:
+ * clip_sn.h, enforced identically by the factory tool). */
+static int sn_validate(const char *sn)
+{
+    return clip_sn_validate(sn) != 0 ? -EINVAL : 0;
+}
+
+static int sn_write(const char *sn, bool allow_overwrite)
+{
+    int ret = sn_validate(sn);
+    if (ret != 0) {
+        return ret;
+    }
+
+    /* Write-once unless the caller verified the rewrite proof. Validation
+     * happens BEFORE this check and before settings_save_one(), so a bad
+     * new value can never destroy an existing SN. */
+    if (!allow_overwrite && config_sn_is_set()) {
+        return -EALREADY;
+    }
+
+    size_t len = strlen(sn);
+    ret = sn_ab_write(sn, len);
+    int ret_s = settings_save_one(SETTING_SN, sn, len);
+    if (ret == 0) {
+        memcpy(g_serial_number, sn, len + 1);
+        if (ret_s != 0) {
+            LOG_WRN("SN settings mirror failed: %d", ret_s);
+        }
+        return 0;
+    }
+    /* Raw copies both failed — fall back to the settings-only write of
+     * the original implementation. */
+    if (ret_s == 0) {
+        memcpy(g_serial_number, sn, len + 1);
+        LOG_WRN("SN raw backup failed (%d), settings only", ret);
+        return 0;
+    }
+    return ret;
+}
+
+int config_set_sn(const char *sn)
+{
+    return sn_write(sn, false);
+}
+
+int config_set_sn_force(const char *sn)
+{
+    return sn_write(sn, true);
+}
+
+int config_clear_sn(void)
+{
+    const struct device *dev = sn_flash_dev();
+    int ret = settings_delete(SETTING_SN);
+
+    /* Also invalidate the fixed-section pair and the sn.bin mirror. */
+    if (dev != NULL) {
+        (void)flash_erase(dev, SN_SECTOR_ADDR, 0x1000);
+    }
+    (void)fs_unlink(SN_FILE_PATH);
+    g_sn_seq = 0;
+    if (ret == 0) {
+        g_serial_number[0] = '\0';
+    }
+    return ret;
+}
+
+int config_set_mode(enum recording_mode mode)
+{
+    return config_set(CONFIG_KEY_MODE, &mode, sizeof(mode));
+}
+
+int config_set_noise_suppress(uint8_t noise)
+{
+    return config_set(CONFIG_KEY_NOISE, &noise, sizeof(noise));
+}
+
+
+int config_set_dereverb_enabled(bool enabled)
+{
+    return config_set(CONFIG_KEY_DEREVERB, &enabled, sizeof(enabled));
+}
+
+int config_set_oled_brightness(uint8_t brightness)
+{
+    return config_set(CONFIG_KEY_BRIGHTNESS, &brightness, sizeof(brightness));
+}
+
+/* ========================================================================== */
+/* WiFi Password Management                                                     */
+/* ========================================================================== */
+
+/* Character set: alphanumeric, excluding easily confused 0/O/l/1/I */
+static const char password_chars[] = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+#define PASSWORD_CHAR_COUNT (sizeof(password_chars) - 1)
+
+int config_generate_wifi_password(void)
+{
+    struct clip_context *ctx = clip_get_context();
+    uint8_t rand_bytes[8];
+
+    sys_rand_get(rand_bytes, sizeof(rand_bytes));
+
+    for (int i = 0; i < 8; i++) {
+        ctx->config.wifi_password[i] = password_chars[rand_bytes[i] % PASSWORD_CHAR_COUNT];
+    }
+    ctx->config.wifi_password[8] = '\0';
+
+    int err = settings_save_one(SETTING_WIFI_PASSWORD,
+                            (const uint8_t *)ctx->config.wifi_password, 9);
+    if (err) {
+        LOG_ERR("Failed to save wifi_password: %d", err);
+        return err;
+    }
+
+    /* Do NOT log the password itself: debug builds mirror logs to the SD
+     * card and the UART console, and the AP credential must not persist
+     * there (CRA / EN 18031 finding). */
+    LOG_DBG("WiFi password generated");
+    return 0;
+}
+
+int config_set_wifi_password(const char *password)
+{
+    return config_set(CONFIG_KEY_WIFI_PASSWORD, password, strlen(password));
+}
+
+const char *config_get_wifi_password(void)
+{
+    struct clip_context *ctx = clip_get_context();
+
+    if (ctx->config.wifi_password[0] == '\0') {
+        /* Never fall back to a fixed universal password ("12345678" was
+         * a public default credential — CRA / EN 18031 finding): a
+         * missing password means first boot after settings loss; fill a
+         * fresh per-device one. sys_rand_get() cannot fail and the
+         * buffer is written even if persisting it fails (saved later). */
+        (void)config_generate_wifi_password();
+    }
+
+    return ctx->config.wifi_password;
+}
+
+int config_set_device_name(const char *name)
+{
+    return config_set(CONFIG_KEY_DEVICE_NAME, name, strlen(name));
+}
+
+const char *config_get_device_name(void)
+{
+    struct clip_context *ctx = clip_get_context();
+
+    if (ctx->config.device_name[0] == '\0') {
+        return "";
+    }
+
+    return ctx->config.device_name;
+}
+
+int config_set_wifi_channel(uint8_t channel)
+{
+    return config_set(CONFIG_KEY_WIFI_CHANNEL, &channel, sizeof(channel));
+}
+
+uint8_t config_get_wifi_channel(void)
+{
+    struct clip_context *ctx = clip_get_context();
+    return ctx->config.wifi_channel;
+}
+
+int config_set_wifi_reg_domain(const char *reg_domain)
+{
+    return config_set(CONFIG_KEY_WIFI_REG_DOMAIN, reg_domain, 2);
+}
+
+const char *config_get_wifi_reg_domain(void)
+{
+    struct clip_context *ctx = clip_get_context();
+    return ctx->config.wifi_reg_domain;
+}

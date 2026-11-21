@@ -1,0 +1,24 @@
+/*
+ * Copyright (c) 2023 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+ */
+
+/* UART configuration for 921600 baud rate */
+&uart0 {
+	current-speed = <921600>;
+};
+
+/* Enable USB device for MSC only */
+&usbd {
+	status = "okay";
+	cdc_acm_uart {
+		status = "disabled";
+	};
+};
+
+/* Certification build: cap charge current at 100 mA (board default 220 mA).
+ * Trickle stays a fixed 10% of ICHG = 10 mA. */
+&npm1300_charger {
+	current-microamp = <100000>;
+};

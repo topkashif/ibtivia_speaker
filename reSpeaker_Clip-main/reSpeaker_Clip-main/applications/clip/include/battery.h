@@ -1,0 +1,63 @@
+/*
+ * Copyright (c) 2025 Seeed Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#ifndef CLIP_BATTERY_H
+#define CLIP_BATTERY_H
+
+/**
+ * @brief Initialize battery monitoring
+ *
+ * Sets up NPM1300 interrupt callbacks for charging events (VBUS, charge complete)
+ * and starts periodic battery level polling (60s interval).
+ * Updates BLE Battery Service with level and charging status.
+ *
+ * @return 0 on success, negative error code on failure
+ */
+int battery_init(void);
+
+/**
+ * @brief Milliseconds since the fuel-gauge state was last persisted
+ *        (INT64_MAX when never). Lets shutdown skip a redundant save.
+ */
+int64_t battery_fg_state_age_ms(void);
+
+/**
+ * @brief Poll battery status immediately
+ *
+ * Reads sensors, updates fuel gauge SoC, and refreshes display/BLE.
+ * Call this when the user triggers a status bar display to get fresh readings.
+ */
+void battery_poll(void);
+
+/**
+ * @brief Persist the nRF Fuel Gauge state to settings (LittleFS)
+ *
+ * Saves the fuel gauge internal state so the SoC is continuous across reboots
+ * (without this, every reboot re-estimates SoC from the resting voltage and
+ * the displayed % jumps). Called on SoC change (infrequent) + on graceful
+ * shutdown/reboot (a fresh copy before power-off).
+ */
+void battery_save_fg_state(void);
+
+/* VBUS present (USB plugged), regardless of active charging — a full pack on
+ * USB still has VBUS up and the PMIC refuses ship mode. Power-off paths gate
+ * on this, NOT on status.battery_charging (false once the charge completes). */
+bool battery_vbus_present(void);
+
+/* Recording allowed? Latched off at critical battery (raw SoC <=3% or
+ * <=3.45V; a graceful STOP runs there), unlocked by charging/VBUS or
+ * recovery to >=8%. VBUS alone unlocks (external power). START paths
+ * (AT + button) gate on this. */
+bool battery_recording_allowed(void);
+
+/* WiFi AP allowed? Blocked while discharging below
+ * CONFIG_CLIP_WIFI_MIN_BATTERY_PERCENT (default 15%) or
+ * CONFIG_CLIP_WIFI_MIN_BATTERY_MV (default 3500 mV). Charging or VBUS
+ * bypasses both floors (external power), and the critical recording
+ * lockout also blocks. Used by AT+WIFI=on and the WIFI_ON transition. */
+bool battery_wifi_allowed(void);
+
+#endif /* CLIP_BATTERY_H */

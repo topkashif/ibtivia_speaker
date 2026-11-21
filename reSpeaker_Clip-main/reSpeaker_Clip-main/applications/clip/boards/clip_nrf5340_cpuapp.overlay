@@ -1,0 +1,15 @@
+/*
+ * Copyright (c) 2025 Seeed Technology Co., Ltd.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* Device tree overlay for Clip application */
+
+/ {
+    /* Reserved for future use */
+};
+
+/* Display: the CH1115 OLED and its I2C2 bus are not populated on this
+ * board and are removed from the board DTS. The UI module compiles out
+ * via CONFIG_CLIP_DISPLAY (see include/display.h). */

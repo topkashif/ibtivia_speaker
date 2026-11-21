@@ -1,0 +1,15 @@
+# Build outputs
+build*/
+reSpeaker_Clip-main/reSpeaker_Clip-main/build-*/
+*.zip
+
+# Logs
+*.log
+build_log.txt
+
+# Cad/tooling droppings
+**/backups/
+*.kicad_prl
+*.bak
+fp-info-cache
+*_log.txt
