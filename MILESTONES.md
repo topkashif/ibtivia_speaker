@@ -61,14 +61,21 @@ beyond `AGENTS.md` + `HANDOFF.md` + `MILESTONES.md` + `hardware_reference.md`
       nPM1300 (33, vs Nordic PS QFN32 table), PE4259 (6, vs pSemi DS Table
       7); every symbol pin exists as a footprint pad; all 4 symbols export
       via `kicad-cli sym export svg`; ERC still 0.
-- [ ] **M2b — Radio block drawn** (`sheets/radio.kicad_sch`): nRF5340 +
-      nRF7002 + PE4259 + antenna pi pads (shunt-L/series-C, keep-out note for
-      M3) + both crystals w/ load caps + coex PTA pins — dimension-for-
-      dimension from the Nordic nRF7002 DK reference schematic (fetch it
-      first).
-      *Validate:* ERC 0; netlist export; **`kicad/scripts/netlist_audit.py`
-      (new, written this step) in per-block mode** — radio nets vs pin map,
-      zero diffs; SVG export of the sheet for eyeball review.
+- [x] **M2b — Radio block drawn** (`sheets/radio.kicad_sch`): nRF5340 +
+      nRF7002 + PE4259/PE42359 + antenna pi pads (shunt-L/series-C, keep-out
+      note for M3) + all three crystals (nRF5340 HFXO/LFXO **and the
+      nRF7002's own 40 MHz** — found missing during the write-up, no external
+      load caps anywhere) + coex PTA pins.
+      *Validated 2026-11-21:* ERC 0 (4 rules downgraded to `ignore` until
+      M2f — see below); netlist export 40 comps / 111 nets;
+      `kicad/scripts/netlist_audit.py` (new, delivered this step) per-block:
+      54 expected nets vs pin map + passives + U5 control mode + encoded
+      values — **zero diffs**; SVG export eyeballed.
+      Design decisions + sources in `netlist_audit.py` docstring and
+      `hardware_reference.md` §1/§2 (normal-voltage config 3, nRF7002 PS
+      Fig 18 wiring, PE42359 single-pin control, 2.4 GHz-only antenna so
+      TXRF1/PAVDD1 are NC). BOM: +8 rows (X3, L5, L6, L7, C40, C41, R5,
+      SW2 — RF passives + load switches flagged "price before M4").
 - [ ] **M2c — Power block drawn** (`sheets/power.kicad_sch`): nPM1300 power
       tree (2× 2.2 µH BUCK inductors, PS v1.3 Table 3), battery HSZ 362123 +
       NTC, all rails incl. SD gated rail, LED + 1 kΩ on P1.09. Record the
@@ -95,6 +102,13 @@ beyond `AGENTS.md` + `HANDOFF.md` + `MILESTONES.md` + `hardware_reference.md`
 
 - **Acceptance (umbrella):** `kicad-cli sch erc` clean; scripted netlist
   audit passes (netlist vs `hardware_reference.md` pin map, zero diffs).
+
+- **M2f gate addition (from M2b):** re-enable the ERC rules downgraded while
+  the hierarchy was half-drawn — `isolated_pin_label`, `pin_not_driven`,
+  `multiple_net_names`, `footprint_link_issues` in `neo_n1.kicad_pro`
+  `erc.rule_severities` — and require a fully clean ERC. The netlist audit's
+  full mode must also grow expectations for the cross-sheet BUS nets
+  (UART/I2C1/SWD/PDM/SD/FLASH/USB…) once their far ends exist.
 
 ## M3 — PCB layout ☐
 - [ ] Floorplan (antenna → RF → MCU → crystals → power → edge)

@@ -6,6 +6,8 @@ content, parens nest. Used by symbol_audit.py and netlist_audit.py.
 """
 from __future__ import annotations
 
+import re
+
 
 def parse(text: str):
     """Parse KiCad s-expression text into nested Python lists."""
@@ -68,3 +70,37 @@ def find_all(node, key: str):
 def find_first(node, key: str):
     hits = find_all(node, key)
     return hits[0] if hits else None
+
+
+_SAFE = re.compile(r"^[A-Za-z0-9_.+\-/][A-Za-z0-9_.+\-/]*$")
+
+
+def _atom(s: str) -> str:
+    if s and _SAFE.match(s):
+        return s
+    return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def dumps(node, indent=0) -> str:
+    """Serialize a parsed node back to KiCad s-expr text.
+
+    Top-level children get one line each; nested nodes stay inline. Strings
+    are quoted only when they are not safe bare atoms, so output is stable
+    for git diffs and re-parseable by parse().
+    """
+    if not isinstance(node, list):
+        return _atom(str(node))
+    head = node[0] if node and isinstance(node[0], str) else ""
+    body = []
+    for ch in node:
+        if isinstance(ch, list):
+            body.append(dumps(ch, indent + 1))
+        else:
+            body.append(_atom(str(ch)))
+    pad = "\t" * indent
+    if len(body) <= 1:
+        return f"({' '.join(body)})"
+    # long nodes: put children on their own indented lines
+    inner = " ".join(body[:1])  # head atom first
+    rest = "\n" + "\n".join(pad + "\t" + b for b in body[1:])
+    return f"({inner}{rest}\n{pad})"

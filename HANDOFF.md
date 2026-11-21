@@ -1,19 +1,65 @@
 # Handoff — read me first
 
-Last updated: 2026-11-21. Project map and rules: `AGENTS.md`.
+Last updated: 2026-11-21 (M2b done). Project map and rules: `AGENTS.md`.
 Milestones: `MILESTONES.md`. Hardware contract: `hardware_reference.md`.
 
 ## Current state (30-second version)
 
 Building a pin-compatible clone of the Seeed reSpeaker Clip wearable recorder
 **without the OLED**. Firmware builds under NCS v3.3.0 with display compiled
-out (M0 done). **M1 done: costed BOM with alternates lives in `bom/bom.csv`
-(24 rows, priced 2026-11-21)**; hardware contract updated with the BOM
-findings. **M2 started (2026-11-21): KiCad project skeleton exists in
-`kicad/`** — 6-block sheet hierarchy + 4-layer stackup decided, ERC/DRC
-clean, no components drawn yet. No hardware exists yet.
+out (M0 done). M1 done (costed BOM, `bom/bom.csv`, now 35 rows). **M2 in
+progress: M2.0 skeleton + M2a libraries + M2b radio block DONE** — the radio
+sheet is **generated** by `kicad/scripts/make_radio_sheet.py` (do not hand-edit
+`radio.kicad_sch`; edit the generator and re-run). Audited by the new
+`kicad/scripts/netlist_audit.py --block radio` (zero diffs). Next:
+**M2c — power block**. No hardware exists yet.
 
-## Done and verified
+## Done and verified (M2b — radio sheet, 2026-11-21)
+
+- `kicad/sheets/radio.kicad_sch` (155 KB, generated): U1 nRF5340-QKxx (95
+  balls), U2 nRF7002 (49 pins), U5 PE42359 (drawn with the project's PE4259
+  symbol; single-pin control mode), X1/X2/X3 crystals, L1/L2 10 µH DCDC +
+  L5 3.3 µH nRF7002 buck + L6/L7 RF match, ANT1 + match, full decoupling,
+  PWR_FLAGs, wire stub + global label on every pin (global labels carry
+  cross-sheet nets).
+- **Design decisions** (sources: nRF5340 PS v1.3 §4.7/§9.3 + Table 214/216;
+  nRF7002 PS v1.0 Table 11/17/19 + Fig 18; PE42359 DS DOC-13214 Table 5;
+  nRF7002 DK hardware files 0.7.2 for the iovdd-load-switch architecture —
+  all cited in `netlist_audit.py`'s docstring, raws in %TEMP%\dk7002):
+  1. **nRF5340 = normal-voltage config 3** — VDD+VDDH all on MAIN_3V3
+     (NOT the DK's high-voltage mode: the Clip has only two 10 µH inductors
+     and its DTS never enables `&vregh`). 2× 10 µH: DCCD→DECD (VREGMAIN),
+     DCC→DECR (VREGRADIO); DCCH + DECN open; QSPI/coex/RF-switch logic all
+     3.3 V. This also keeps the M1 green-LED-on-P1.09 choice valid (1.8 V
+     GPIO drive would starve a green LED).
+  2. **nRF7002 = PS Fig 18 reference** — VBAT/BUCKVBAT/BUCKVBATS/AFEVBAT on
+     MAIN_3V3; internal buck 3.3 µH BUCKOUT→BUCKVMID = VDD_BUCK feeding
+     RFVDD/RFBUCKVDD/DIGVDD/PWRBUCKVDD; PWRIOVDD(34)→OTPVDD(1) link; own
+     **40 MHz crystal X3 (Cl=8 pF, no load caps)**; TXRF1/PAVDD1 NC
+     (2.4 GHz-only antenna; nRF7001-equivalent).
+  3. **PE42359 single-pin control** — pin 6 = VDD (RFSW_VDD, switched 3.3 V
+     branch of MAIN via P0.29 load switch, M2c), pin 4 = CTRL ← nRF7002
+     SW_CTRL0, 100 kΩ pull-down holds the BLE path (RFC–RF2) when SW_CTRL0
+     floats. RF1 = nRF7002 TXRF0 (WiFi-active), RF2 = nRF5340 ANT. No
+     series DC-blocks (pSemi eval = direct 50 Ω; BOM note corrected).
+  4. Antenna: series C40 1.2 pF + shunt L7 2.7 nH at the 2450AT18B0100 pad
+     (Johanson); nRF5340 side C9 0.7 pF shunt + L6 2.2 nH series (PS §9.3).
+     All RF match values = VNA-tune reserves.
+  5. **No external crystal load caps anywhere** (the M2b bullet's "w/ load
+     caps" was a slip against the contract — crystals connect direct;
+     internal caps tuned in DTS).
+- `kicad/scripts/netlist_audit.py` (new): exports the project netlist via
+  `kicad-cli sch export netlist --format kicadsexpr` and diffs it against an
+  independent transcription of the contract (pin map + PS figures):
+  54 expected nets, GND/NC checks, open-pin coverage check (every open pin
+  must be in the NC list — this caught the missing X3), U5 control mode,
+  encoded values. `--block radio` green: zero diffs.
+- ERC 0, DRC 0, symbol_audit still zero diffs, SVG export eyeballed (clean).
+- **BOM +8 rows** (X3, L5, L6, L7, C40, C41, R5 100k pulldowns, SW2 load
+  switches): RF passives + the two GPIO load switches the firmware expects
+  (iovdd-ctrl P0.26, rfsw P0.29) — flagged "price + stock check before M4".
+
+## Done and verified (M2a and earlier)
 
 - M0 (firmware boundary): OLED removal applied across 7 firmware files (board
   DTS, app Kconfig / CMakeLists / display.h stubs / prj.conf, MCUboot conf +
@@ -84,7 +130,7 @@ clean, no components drawn yet. No hardware exists yet.
   Attend 4-pin magnetic pogo (both factory-direct industry-wide, not a
   distributor gap we can buy around).
 
-## Done and verified (M2, in progress)
+## Done and verified (M2.0 + M2a)
 
 - **M2a — libraries (2026-11-21):** `kicad/lib/neo_n1.kicad_sym` assembled
   from raw-span copies (nRF5340-QKxx = stock `MCU_Nordic`; nRF7002-QFAA-R7 /
@@ -115,17 +161,23 @@ Sub-milestones with per-step validation live in `MILESTONES.md` §M2
 (M2a…M2f). Each ends validated + committed; a fresh session resumes from
 this file + the six context docs listed in MILESTONES.md.
 
-1. **M2b — Radio block** + deliver `kicad/scripts/netlist_audit.py`
-   (per-block mode; reuses the same pin-map source as symbol_audit).
-   Reference: nRF7002 PS QFN reference schematic + DK hardware files
-   (nrf7002-qfaa-reference-layout-1_2.zip URL found on the nRF7002 Downloads
-   page); PE4259 control mode decision (single-pin vs complementary) to be
-   made while drawing (SW_CTRL0 from nRF7002 drives the switch).
-2. **M2c — Power block** (+ nPM1300 VBUS-protection verdict recorded).
-3. **M2d / M2e — Memory+USB, then Audio+Misc.**
+1. ~~**M2b — Radio block**~~ **DONE 2026-11-21** (see M2b section above).
+2. **M2c — Power block** (`sheets/power.kicad_sch`): nPM1300 power tree
+   (2× 2.2 µH BUCK inductors per PS v1.3 Table 3), battery + NTC, all rails
+   **incl. the two MAIN-branch load switches** (nRF70_IOVDD P0.26,
+   rfsw_vdd P0.29 — BOM row SW2), mic_vdd/flash_vdd gating, LED + 1 kΩ on
+   P1.09, I2C1 + PMIC IRQ, haptic→PMIC-GPIO1, VBUS feed. Record the
+   nPM1300 integrated VBUS-protection verdict (add VBUS TVS only if
+   absent). Netlist-audit expectations for the power nets land with it.
+3. **M2d / M2e — Memory+USB, then Audio+Misc.** The radio sheet already
+   labels their BUS nets: FLASH_*, SD_*, USB_DP/DN/VBUS, PDM_*, UART_*,
+   SWD_*, NRST, BTN_N, LED_ACT, I2C1_*, PMIC_IRQ, HAPTIC_CTRL, MIC_VDD_EN,
+   FLASH_VDD_EN — reuse those names verbatim so the full audit connects.
 4. **M2f — full netlist audit vs `hardware_reference.md`, zero diffs** —
-   M2 acceptance; this also covers the LED-on-P1.09 and 2.2 µH inductor
-   updates already reflected in the pin map.
+   M2 acceptance; **also: re-enable the four ERC rules downgraded to
+   `ignore` in `neo_n1.kicad_pro` (isolated_pin_label, pin_not_driven,
+   multiple_net_names, footprint_link_issues) and require clean ERC**;
+   price/stock the 8 new BOM rows.
 
 ## Open questions / decisions pending
 
@@ -146,6 +198,24 @@ this file + the six context docs listed in MILESTONES.md.
 4. `west build` pristine takes > 10 min (Opus/Lua/3 images) — background it.
 5. `git -C <repo> apply <relative-path>` resolves relative to the repo, not
    the cwd — use absolute patch paths.
+6. KiCad s-expr strings must keep literal newlines ESCAPED (`\n`) inside
+   quoted strings — a raw newline in a `(text "...")` makes kicad-cli fail
+   the whole sheet load with "Failed to load schematic" (silent, rc=3).
+7. Never round-trip symbol libs through a custom serializer — embedded
+   `lib_symbols` must be RAW text spans of the source lib (quote style
+   matters to KiCad's parser). `make_radio_sheet.py::raw_symbol_span` does
+   this; reuse it.
+8. Components in a sub-sheet need instance paths `"/<root-uuid>/<sheet-uuid>"`
+   and placement on the 1.27 mm grid (else 250+ `endpoint_off_grid` ERC
+   warnings); SnapEDA symbols' `_0_0` unit sub-symbols are fine with
+   `(unit 1)` instances.
+9. power:GND/PWR_FLAG pins are `power_in` in KiCad 10 — a net of only
+   inputs needs one PWR_FLAG (GND included when no regulator output lands
+   on the sheet yet). PWR_FLAG on a Bidirectional pin (BUCKVMID) triggers
+   `pin_to_pin` — don't flag self-driven pins.
+10. `kicad-cli` runs from the project dir: `cd kicad` first —
+    `kicad/neo_n1.kicad_sch` from `try1/` double-prefixes and "fails to
+    load". Use `--output` for reports.
 
 ## Session-end checklist (for the next agent)
 

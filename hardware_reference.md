@@ -8,7 +8,7 @@ reSpeaker_Clip firmware repo.
 
 | Function | Part (as used on Clip) | Key specs / notes |
 |---|---|---|
-| MCU | Nordic **nRF5340 QKAA** (dual Cortex-M33) | DCDC mode for main+radio regulators; 1MB flash / 512KB RAM; package **aQFN-94, 7×7 mm** (orderable NRF5340-QKAA-**R7**, 7″ reel code, same silicon) |
+| MCU | Nordic **nRF5340 QKAA** (dual Cortex-M33) | DCDC mode for main+radio regulators; 1MB flash / 512KB RAM; package **aQFN-94, 7×7 mm** (orderable NRF5340-QKAA-**R7**, 7″ reel code, same silicon). Supply config = PS v1.3 Table 214 **config 3** (normal voltage): VDD **and** VDDH tied to the 3.3 V MAIN rail, VREGMAIN + VREGRADIO in DCDC mode, VREGH unused (no DCCH inductor), USB on, NFC off |
 | WiFi/BLE coexist | **nRF7002** module (QSPI) | iovdd-ctrl P0.26, BUCKEN P0.11, HOST_IRQ P0.12, QSPI 24 MHz quad |
 | PMIC / Charger | **Nordic nPM1300** @ I2C1 addr 0x6B | Li charger 220 mA, term 4.25 V, VBUS limit 500 mA, NTC 10 kΩ β=3380. Datasheet-checked (PS v1.3): all four values are supported — but PMIC reset default is VTERM 3.60 V / VBUS limit 100 mA, so the host **must** configure them at boot (this firmware already does). 220 mA confirmed in range (32–800 mA); β=3380 is an explicit supported NTC profile |
 | Microphones | Dual **PDM** mics, up to 16 kHz | L+R on shared CLK/DIN; rail 1.8 V. **Primary: TDK T5837 MMICT5837-00-012** (−37 dBFS, bottom port, 3.5×2.65 LGA, L/R SEL GND=R/VDD=L — footprint- and convention-identical to T5838; ~+4 dB hotter → gain trim at bring-up). Alternates: T5838 (reference, 0 India shelf) / Knowles SPH0641LU4H-1 (no fw change) |
@@ -18,10 +18,11 @@ reSpeaker_Clip firmware repo.
 | Haptic | LRA/ERM vibration motor on BUCK1 (3.3 V) | Switched via nPM1300 GPIO1 (host drives P1.06 → PMIC GPIO1) |
 | Button | User button, active-low, pull-up | P1.15 |
 | Charging connector | **USB-C receptacle only** (rev-B: magnetic pogo REMOVED) | 16-pin (GCT USB4105-GF-A class), VBUS+D+/D− to nRF5340 USBD; **Rd 5.1 kΩ on each of CC1/CC2 (required — no VBUS without them)** + USBLC6-2SC6 ESD on D+/D−. VBUS → nPM1300 input (500 mA limit); no PD needed (220 mA charge) |
-| Crystals | 32 MHz HFXO + 32.768 kHz LFXO | **No external load caps** — internal caps tuned (HFXO 9 pF, LFXO 7 pF) |
+| Crystals | 32 MHz HFXO + 32.768 kHz LFXO (nRF5340); **40 MHz on nRF7002 XOP/XON** (Cl=8 pF, ESR ≤100 Ω, PS Table 19) | **No external load caps on any crystal** — nRF5340 internal caps tuned (HFXO 9 pF, LFXO 7 pF); nRF7002 runs its internal caps per reference |
 | DCDC inductors | **2× 10 µH** (L1, L2) for nRF5340 vregmain/vregradio | Mandatory for the ~500–600 µA DCDC saving |
 | nPM1300 BUCK inductors | **2× 2.2 µH** (BUCK1, BUCK2) | Per nPM1300 PS v1.3 Table 3: nominal 2.2 µH, ≤20 %, DCR ≤400 mΩ, Isat >350 mA, ≥4 µF effective out cap. Distinct from the nRF5340 10 µH parts — do not reuse |
-| RF antenna switch | SPDT 2.4 GHz on rfsw_vdd (P0.29 rail) | GPIO-controlled (active-high select), 1.8–3.3 V; candidate **pSemi PE42359SCAA-Z** (PE4259-63 cross, same footprint/control) |
+| RF antenna switch | SPDT 2.4 GHz on rfsw_vdd (P0.29 rail) | pSemi **PE42359SCAA-Z** (BOM) drawn as PE4259 symbol (same SC-70-6 footprint/control): **single-pin control mode** — pin 6 = VDD, pin 4 = CTRL ← nRF7002 SW_CTRL0 (asserts on nRF70 radio activity; CTRL high → RFC–RF1 = WiFi/TXRF0, low/default → RFC–RF2 = BLE/nRF5340 ANT), 100 kΩ pull-down on CTRL holds the BLE path while nRF70 IOVDD is gated |
+| RF front end | nRF5340 ANT: 0.7 pF shunt + 2.2 nH series (nRF5340 PS §9.3). Antenna side: series 1.2 pF + shunt 2.7 nH at the 2450AT18B0100 pad (Johanson match; VNA-tune reserve) | nRF7002 TXRF0 → switch RF1 **direct** (PS Fig 18: no series DC-block needed; pSemi eval board = direct 50 Ω lines). TXRF1/PAVDD1 not connected — 2.4 GHz-only antenna (BOM); nRF7001-equivalent config |
 | Status LED (rev-B add) | 0402 green LED + 0402 1 kΩ series R on **P1.09** | ~1–1.2 mA when on, 0 when off; P1.09 freed by OLED removal |
 
 ## 2. Power tree
@@ -34,8 +35,19 @@ LiPo 240 mAh ── nPM1300 ─┬─ BUCK1 3V3 ── haptic motor
                          └─ LDO2 3V3 ── VDD_SD (microSD)       [power-gated, PMIC GPIO3]
 
 GPIO-switched rails: P1.14 mic_vdd · P0.29 rfsw_vdd · P0.27 flash_vdd   [oled_vdd (P1.08) REMOVED — no OLED]
+GPIO-switched branches of MAIN 3V3 (load switches — M2c places them; BOM row SW2):
+  P0.26 → nRF70_IOVDD (nRF7002 IOVDD; PS 14.3.2 sequencing VBAT → BUCKEN → IOVDD, ≥6 ms/≥1 ms)
+  P0.29 → rfsw_vdd (PE42359 VDD pin 6)
 USB-C VBUS → nPM1300 VBUS input (500 mA limit) — sole charge path (rev-B: pogo removed, nothing in firmware referenced it; charging/VBUS/shutdown gating all read the PMIC)
 ```
+
+M2b radio-sheet decisions (2026-11-21, sources in `kicad/scripts/netlist_audit.py`
+module docstring): nRF5340 normal-voltage config 3 (2× 10 µH: DCCD→DECD,
+DCC→DECR; DCCH/DECN open); nRF7002 per PS Fig 18 (VBAT-class pins on MAIN 3V3,
+internal buck 3.3 µH BUCKOUT→BUCKVMID = VDD_BUCK feeding RFVDD/RFBUCKVDD/
+DIGVDD/PWRBUCKVDD, PWRIOVDD→OTPVDD link, own 40 MHz crystal); QSPI/coex at
+3.3 V (IOVDD 1.62–3.6 V range allows it — nRF5340 GPIO high = VDD = 3.3 V in
+this config); PE42359 single-pin control (SW_CTRL0 → CTRL).
 
 ## 3. Full pin map (keep identical so firmware builds unchanged)
 
