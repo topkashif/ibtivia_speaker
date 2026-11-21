@@ -35,16 +35,65 @@ Clone boots the upstream firmware minus the OLED, pin-compatible.
   inductors (not 1.5 µH); nRF5340 QKAA is **aQFN-94** (not aQFN73).
 
 ## M2 — KiCad schematic ◐
-- [x] Project skeleton, 4-layer stackup decided — `kicad/` project
-      (`neo_n1`), 6-block sheet hierarchy (Radio/Power/Audio/Memory/USB/Misc),
-      SIG/GND/PWR/SIG assignment + impedance targets in `kicad/stackup.md`.
-      Verified: ERC 0 violations, hierarchy netlist export resolves all 7
-      sheets, DRC 0 violations (placeholder Edge.Cuts outline)
-- [ ] All blocks drawn: nRF5340+nRF7002+antenna switch (copied dimension-for-
-      dimension from Nordic nRF7002 DK reference), nPM1300 power tree, PDM
-      mics, PY25Q64H, microSD, USB, magnetic charger, SWD + test points
-- **Acceptance:** `kicad-cli sch erc` clean; scripted netlist audit passes
-  (netlist vs `hardware_reference.md` pin map, zero diffs).
+
+Each sub-milestone below is session-sized and ends with its own validation
+commands passing, `HANDOFF.md` updated, and a commit. A fresh session picks
+up from `HANDOFF.md` → first unchecked sub-milestone; it never needs context
+beyond `AGENTS.md` + `HANDOFF.md` + `MILESTONES.md` + `hardware_reference.md`
++ `bom/bom.csv` + `kicad/stackup.md`.
+
+- [x] **M2.0 — Project skeleton, 4-layer stackup decided** — `kicad/` project
+      (`neo_n1`), 6-block sheet hierarchy (Radio/Power/Audio/Memory/USB/Misc,
+      pages 1–7), SIG/GND/PWR/SIG in `kicad/stackup.md`.
+      *Validated 2026-11-21:* ERC 0, netlist export resolves all 7 sheets,
+      DRC 0 (placeholder Edge.Cuts outline).
+- [ ] **M2a — Libraries.** Project symbol lib `kicad/lib/neo_n1.kicad_sym`.
+      Reuse stock symbols where pin-compatible (nRF5340-QKxx IS in stock
+      `MCU_Nordic`; generic QSPI flash, USBLC6 in `Power_Protection`, button
+      `KMR2` in `Button_Switch_SMD`); custom symbols for the rest — expected
+      needs: nRF7002-QFAA, nPM1300-QEAA, PE4259, chip antenna 2450AT18B,
+      PDM mic T5837, battery+NTC, ERM haptic, GCT USB4105 (stock generic
+      receptacle symbol may serve). Custom footprints only where stock ones
+      don't match the BOM package (check `Connector_Card` DM3AT,
+      `Connector_USB` for the GCT part first).
+      *Validate:* `kicad-cli sch erc` still 0; `kicad-cli sym export svg`
+      parses every custom symbol; **new `kicad/scripts/symbol_audit.py`**
+      diffs custom-symbol pin names/numbers against the pin map in
+      `hardware_reference.md` — zero diffs.
+- [ ] **M2b — Radio block drawn** (`sheets/radio.kicad_sch`): nRF5340 +
+      nRF7002 + PE4259 + antenna pi pads (shunt-L/series-C, keep-out note for
+      M3) + both crystals w/ load caps + coex PTA pins — dimension-for-
+      dimension from the Nordic nRF7002 DK reference schematic (fetch it
+      first).
+      *Validate:* ERC 0; netlist export; **`kicad/scripts/netlist_audit.py`
+      (new, written this step) in per-block mode** — radio nets vs pin map,
+      zero diffs; SVG export of the sheet for eyeball review.
+- [ ] **M2c — Power block drawn** (`sheets/power.kicad_sch`): nPM1300 power
+      tree (2× 2.2 µH BUCK inductors, PS v1.3 Table 3), battery HSZ 362123 +
+      NTC, all rails incl. SD gated rail, LED + 1 kΩ on P1.09. Record the
+      datasheet verdict on nPM1300 integrated VBUS input protection (add
+      VBUS TVS only if absent) — checklist item from the pogo removal.
+      *Validate:* ERC 0; netlist_audit.py per-block (rail nets, gating
+      GPIOs, charger sense) — zero diffs.
+- [ ] **M2d — Memory + USB blocks drawn** (`sheets/memory.kicad_sch`,
+      `sheets/usb.kicad_sch`): PY25Q64HA (footprint fits Winbond alt),
+      microSD DM3AT on gated rail, USB-C USB4105 + 2× 5.1 kΩ CC Rd +
+      USBLC6-2SC6 ESD; **no pogo pads anywhere**.
+      *Validate:* ERC 0; netlist_audit.py per-block — zero diffs; explicit
+      check that no pull-up on a gated rail sources from an ungated rail.
+- [ ] **M2e — Audio + Misc blocks drawn** (`sheets/audio.kicad_sch`,
+      `sheets/misc.kicad_sch`): PDM mics L/R (T5837 primary, footprint fits
+      Knowles SPH0641 sub), ERM haptic on PMIC GPIO drive, SWD + test points
+      on every rail and bus, user button KMR231NG.
+      *Validate:* ERC 0; netlist_audit.py per-block — zero diffs.
+- [ ] **M2f — Full acceptance & docs.** netlist_audit.py in full mode:
+      netlist vs `hardware_reference.md` pin map, **zero diffs**; ERC clean
+      on the whole project; fold any pin-map corrections learned while
+      drawing back into `hardware_reference.md`; MILESTONES/HANDOFF status
+      updates. (May share a session with M2e when smooth.)
+
+- **Acceptance (umbrella):** `kicad-cli sch erc` clean; scripted netlist
+  audit passes (netlist vs `hardware_reference.md` pin map, zero diffs).
 
 ## M3 — PCB layout ☐
 - [ ] Floorplan (antenna → RF → MCU → crystals → power → edge)

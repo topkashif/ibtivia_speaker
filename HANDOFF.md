@@ -101,15 +101,22 @@ clean, no components drawn yet. No hardware exists yet.
 
 ## Next actions (in order)
 
-1. **M2 step 2 — Radio block:** fetch the Nordic nRF7002 DK reference
-   schematic PDF, draw nRF5340-QKAA + nRF7002-QFAA + PE4259 antenna switch +
-   Johanson 2450AT18B0100001E antenna (shunt-L/series-C pi pads) + both
-   crystals + coex PTA pins in `kicad/sheets/radio.kicad_sch`. Requires
-   project symbol libraries first (part of step 2).
-2. **M2 step 3 — Power block:** nPM1300 power tree w/ 2.2 µH BUCK inductors;
-   during drawing, confirm integrated VBUS input protection in PS v1.3
-   (add VBUS TVS only if absent) — checklist item carried from the pogo
-   removal decision.
+Sub-milestones with per-step validation live in `MILESTONES.md` §M2
+(M2a…M2f). Each ends validated + committed; a fresh session resumes from
+this file + the six context docs listed in MILESTONES.md.
+
+1. **M2a — Libraries:** project symbol lib `kicad/lib/neo_n1.kicad_sym`;
+   nRF5340-QKxx comes free from stock `MCU_Nordic`, custom symbols needed
+   for nRF7002/nPM1300/PE4259/antenna/mic/battery/haptic/USB-C; deliver
+   `kicad/scripts/symbol_audit.py` (pin names/numbers vs pin map, zero
+   diffs).
+2. **M2b — Radio block** + deliver `kicad/scripts/netlist_audit.py`
+   (per-block mode; reuses the same pin-map source as symbol_audit).
+3. **M2c — Power block** (+ nPM1300 VBUS-protection verdict recorded).
+4. **M2d / M2e — Memory+USB, then Audio+Misc.**
+5. **M2f — full netlist audit vs `hardware_reference.md`, zero diffs** —
+   M2 acceptance; this also covers the LED-on-P1.09 and 2.2 µH inductor
+   updates already reflected in the pin map.
 
 ## Open questions / decisions pending
 
