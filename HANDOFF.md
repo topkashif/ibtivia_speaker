@@ -38,6 +38,18 @@ findings. No KiCad project exists yet. No hardware exists yet.
   deep-stocked. Note: digikey.in stock ships from global warehouse (duty +
   GST at delivery); element14 India quotes are domestic GST-inclusive.
 
+- **Alternates review applied (2026-11-21, user suggestions):** U1/U2/U3
+  orderables switched to **-R7** (7″ reel container code — identical
+  silicon, zero fw impact; better MOQ/stock: U1 element14 ₹783.50,
+  U2 Mouser ₹364.01, U3 Mouser ₹211.14 @10). Mic primary is now **T5837**
+  (user suggestion confirmed drop-in: −37 dBFS vs T5838's −41, same
+  footprint/L-R convention, no fw change, Mouser India 16k @ ₹199.68 — far
+  better supplied than T5838's zero shelf). Winbond flash alternates decoded
+  into BOM row U4A (all EF 40 17 → DTS `jedec-id` + delete `sfdp-bfp`
+  override; prefer −Q over −M). WLY 601235 battery alternate logged as BT1A
+  with four hard consequences (6.0 mm thick, no NTC → `DISABLENTC=1` + strap
+  + driver fix, charge ≤120 mA 0.5 C, OCV re-profile) — HSZ 362123 stays
+  primary.
 - **Pogo removal (2026-11-21, user decision):** magnetic pogo connector
   deleted from the BOM and from the future schematic entirely — **no DNP
   pads, no reference**. USB-C (J3, USB4105-GF-A) is the sole charge/data

@@ -8,13 +8,13 @@ reSpeaker_Clip firmware repo.
 
 | Function | Part (as used on Clip) | Key specs / notes |
 |---|---|---|
-| MCU | Nordic **nRF5340 QKAA** (dual Cortex-M33) | DCDC mode for main+radio regulators; 1MB flash / 512KB RAM; package **aQFN-94, 7×7 mm** (orderable NRF5340-QKAA-R) |
+| MCU | Nordic **nRF5340 QKAA** (dual Cortex-M33) | DCDC mode for main+radio regulators; 1MB flash / 512KB RAM; package **aQFN-94, 7×7 mm** (orderable NRF5340-QKAA-**R7**, 7″ reel code, same silicon) |
 | WiFi/BLE coexist | **nRF7002** module (QSPI) | iovdd-ctrl P0.26, BUCKEN P0.11, HOST_IRQ P0.12, QSPI 24 MHz quad |
 | PMIC / Charger | **Nordic nPM1300** @ I2C1 addr 0x6B | Li charger 220 mA, term 4.25 V, VBUS limit 500 mA, NTC 10 kΩ β=3380. Datasheet-checked (PS v1.3): all four values are supported — but PMIC reset default is VTERM 3.60 V / VBUS limit 100 mA, so the host **must** configure them at boot (this firmware already does). 220 mA confirmed in range (32–800 mA); β=3380 is an explicit supported NTC profile |
-| Microphones | Dual **PDM** mics (T5838-class), up to 16 kHz | L+R on shared CLK/DIN; rail 1.8 V. T5838 = **TDK InvenSense MMICT5838-00-012** (bottom port, LGA 3.5×2.65); obtainable sub: **Knowles SPH0641LU4H-1** (same L/R convention, no firmware change; gain table revisit at bring-up) |
-| External flash | **Puya PY25Q64H** 8 MB SPI-NOR (quad) | JEDEC ID 85 20 17; max 24 MHz used; own rail flash_vdd. Orderable **PY25Q64HA-SUH-IR** (LCSC only — Puya not franchised at DK/Mouser); ⚠ NOT P25Q64H (JEDEC 85 60 17, fails DTS check). Second sources (Winbond W25Q64JVSSIQ etc.) need a `jedec-id` DTS edit |
+| Microphones | Dual **PDM** mics, up to 16 kHz | L+R on shared CLK/DIN; rail 1.8 V. **Primary: TDK T5837 MMICT5837-00-012** (−37 dBFS, bottom port, 3.5×2.65 LGA, L/R SEL GND=R/VDD=L — footprint- and convention-identical to T5838; ~+4 dB hotter → gain trim at bring-up). Alternates: T5838 (reference, 0 India shelf) / Knowles SPH0641LU4H-1 (no fw change) |
+| External flash | **Puya PY25Q64H** 8 MB SPI-NOR (quad) | JEDEC ID 85 20 17; max 24 MHz used; own rail flash_vdd. Orderable **PY25Q64HA-SUH-IR** (LCSC only — Puya not franchised at DK/Mouser); ⚠ NOT P25Q64H (JEDEC 85 60 17, fails DTS check). Winbond alternates (BOM U4A: W25Q64JVSSIQ SOIC-8 drop-in / SSIM / ZPIQ WSON6×5 / XGIM XSON4×4, all JEDEC **EF 40 17**): swap = DTS `jedec-id` edit + **delete the `sfdp-bfp` override** (Puya-captured) + pristine build; prefer −Q suffixes (QE fixed) over −M (DTR/QPI variant) |
 | Storage | microSD (FAT) over SPI4 @ 24 MHz | Own rail VDD_SD (LDO2, power-gated) |
-| Battery | Li-Po **HSZ 362123, 240 mAh**, 4.20 V cell | On-cell protection IC; NTC to PMIC TS pin |
+| Battery | Li-Po **HSZ 362123, 240 mAh**, 4.20 V cell | On-cell protection IC; NTC to PMIC TS pin. Alternate on file (BOM BT1A): WLY 601235 — same capacity + PCM but **6.0 mm thick (vs 2.3 mm design) and 2-wire, no NTC**: adopting it requires NTC-pin strap + `DISABLENTC=1` (JEITA supervision lost + driver fix), charge current cut to ≤120 mA (0.5 C), and `battery_model.inc` OCV re-profile |
 | Haptic | LRA/ERM vibration motor on BUCK1 (3.3 V) | Switched via nPM1300 GPIO1 (host drives P1.06 → PMIC GPIO1) |
 | Button | User button, active-low, pull-up | P1.15 |
 | Charging connector | **USB-C receptacle only** (rev-B: magnetic pogo REMOVED) | 16-pin (GCT USB4105-GF-A class), VBUS+D+/D− to nRF5340 USBD; **Rd 5.1 kΩ on each of CC1/CC2 (required — no VBUS without them)** + USBLC6-2SC6 ESD on D+/D−. VBUS → nPM1300 input (500 mA limit); no PD needed (220 mA charge) |
