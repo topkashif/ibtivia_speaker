@@ -38,6 +38,17 @@ findings. No KiCad project exists yet. No hardware exists yet.
   deep-stocked. Note: digikey.in stock ships from global warehouse (duty +
   GST at delivery); element14 India quotes are domestic GST-inclusive.
 
+- **Pogo removal (2026-11-21, user decision):** magnetic pogo connector
+  deleted from the BOM and from the future schematic entirely — **no DNP
+  pads, no reference**. USB-C (J3, USB4105-GF-A) is the sole charge/data
+  port; revisit only if a dock product is revived. Consequences applied:
+  BOM rows added — R4 (2× ERJ-2GEJ512X 5.1 kΩ Rd on CC1/CC2, *required* for
+  any Type-C source to apply VBUS) and D1 (USBLC6-2SC6 ESD on D+/D−,
+  digikey.in 129,234 @ ₹21.56, live-verified). Zero firmware impact
+  (charging/VBUS/shutdown gating all read the nPM1300; grep of the whole
+  tree found no pogo/dock reference). Board cost @qty-10 drops to ~₹2,970.
+  M2 checklist item: confirm nPM1300's integrated VBUS input protection in
+  PS v1.3 during schematic; add a VBUS TVS only if absent.
 - `bom/bom.csv`: per-block MPNs, packages, stock + qty-10 prices at 2+
   distributors (collected 2026-11-21 by three parallel research passes);
   firmware-constrained parts flagged; substitutions carry their firmware

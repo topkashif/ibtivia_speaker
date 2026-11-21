@@ -17,7 +17,7 @@ reSpeaker_Clip firmware repo.
 | Battery | Li-Po **HSZ 362123, 240 mAh**, 4.20 V cell | On-cell protection IC; NTC to PMIC TS pin |
 | Haptic | LRA/ERM vibration motor on BUCK1 (3.3 V) | Switched via nPM1300 GPIO1 (host drives P1.06 → PMIC GPIO1) |
 | Button | User button, active-low, pull-up | P1.15 |
-| Charging connector | 4-pin magnetic (pogo) | VBUS, GND + 2 pins (comms/NTC per Seeed base design) |
+| Charging connector | **USB-C receptacle only** (rev-B: magnetic pogo REMOVED) | 16-pin (GCT USB4105-GF-A class), VBUS+D+/D− to nRF5340 USBD; **Rd 5.1 kΩ on each of CC1/CC2 (required — no VBUS without them)** + USBLC6-2SC6 ESD on D+/D−. VBUS → nPM1300 input (500 mA limit); no PD needed (220 mA charge) |
 | Crystals | 32 MHz HFXO + 32.768 kHz LFXO | **No external load caps** — internal caps tuned (HFXO 9 pF, LFXO 7 pF) |
 | DCDC inductors | **2× 10 µH** (L1, L2) for nRF5340 vregmain/vregradio | Mandatory for the ~500–600 µA DCDC saving |
 | nPM1300 BUCK inductors | **2× 2.2 µH** (BUCK1, BUCK2) | Per nPM1300 PS v1.3 Table 3: nominal 2.2 µH, ≤20 %, DCR ≤400 mΩ, Isat >350 mA, ≥4 µF effective out cap. Distinct from the nRF5340 10 µH parts — do not reuse |
@@ -34,7 +34,7 @@ LiPo 240 mAh ── nPM1300 ─┬─ BUCK1 3V3 ── haptic motor
                          └─ LDO2 3V3 ── VDD_SD (microSD)       [power-gated, PMIC GPIO3]
 
 GPIO-switched rails: P1.14 mic_vdd · P0.29 rfsw_vdd · P0.27 flash_vdd   [oled_vdd (P1.08) REMOVED — no OLED]
-USB-C / magnetic VBUS → nPM1300 VBUS input (500 mA limit)
+USB-C VBUS → nPM1300 VBUS input (500 mA limit) — sole charge path (rev-B: pogo removed, nothing in firmware referenced it; charging/VBUS/shutdown gating all read the PMIC)
 ```
 
 ## 3. Full pin map (keep identical so firmware builds unchanged)
