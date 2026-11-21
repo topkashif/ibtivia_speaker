@@ -1,0 +1,29 @@
+{"rows":[
+{"ref":"MK1+MK2","mpn":"MMICT5838-00-012 (TDK InvenSense T5838)","india_stock":[
+{"vendor":"DigiKey India (digikey.in)","qty":0,"price_qty10":"₹192.88 INR (backorder; 10,000 est. 12-Mar-2027)","url":"https://www.digikey.in/en/products/detail/tdk-invensense/MMICT5838-00-012/16903860"},
+{"vendor":"element14 India (in.element14.com)","qty":0,"price_qty10":"₹178.34 INR (backorder; deliveries start 13-Dec-2026)","url":"https://in.element14.com/invensense/mmict5838-00-012/mems-microphone-85deg-c-lga-cav/dp/4717225"},
+{"vendor":"Mouser India (ships to India)","qty":0,"price_qty10":"2.01 USD (backorder; 13,342 due 04-Dec-2026, 30,000 due 14-Jan-2027)","url":"https://www.mouser.com/ProductDetail/TDK-InvenSense/MMICT5838-00-012"},
+{"vendor":"DigiKey India (alt: Knowles/Syntiant SPH0641LU4H-1)","qty":22668,"price_qty10":"₹224.69 INR (live stock)","url":"https://www.digikey.in/en/products/detail/syntiant/SPH0641LU4H-1/5332438"}],
+"best_india_price_qty10":"₹178.34 INR (element14 India, backorder); for LIVE India stock use alt SPH0641LU4H-1 at ₹224.69 (DigiKey India)","import_path_if_zero":"India shelf stock of the exact TDK part is ZERO on every storefront checked. Path 1 (no customs): element14 India backorder ₹178.34@10, deliveries from 13-Dec-2026, domestic GST invoice. Path 2: Mouser backorder (USD 2.01@10), factory lots 04-Dec-2026 / 14-Jan-2027, ships to India, duty+IGST due on delivery. Path 3 (need mics now): buy alt Knowles SPH0641LU4H-1 at DigiKey India - 22,668 live, ₹224.69@10, delivered ~4 days; revisit audio gain table (-26 vs -41 dBFS) per BOM note.",
+"notes":"Semikart/Sunrom/Robu/Elliott Electronics: no listings for this MPN. Knowles alt is listed under 'Syntiant' at DigiKey. Sensitivity mismatch documented in bom.csv row 5."},
+{"ref":"U4","mpn":"PY25Q64HA-SUH-IR (Puya)","india_stock":[
+{"vendor":"Campus Component (Pune, India - Puya channel)","qty":381,"price_qty10":"₹80.00 INR (MOQ 1, SPQ 2000)","url":"https://www.campuscomponent.com/products/puya-semiconductor-nor-flash-64mb-py25q64ha-suh-ir-me-3762-d/2208614000070635062"},
+{"vendor":"LCSC (Ships to India)","qty":28099,"price_qty10":"0.6946 USD (~₹62 INR equiv; courier shipping extra, 5-8 business days)","url":"https://www.lcsc.com/product-detail/C22438999.html"},
+{"vendor":"Bafna Devices (India reseller)","qty":0,"price_qty10":"₹50.00 INR listed but OUT OF STOCK","url":"https://bafnadevices.com/category/memory"},
+{"vendor":"DigiKey India (alt: Winbond W25Q64JVSSIQ)","qty":36020,"price_qty10":"₹96.82 INR (live stock, tube)","url":"https://www.digikey.in/en/products/detail/winbond-electronics/W25Q64JVSSIQ/5803992"},
+{"vendor":"Evelta (Mumbai, India - alt: W25Q64JVSSIQ)","qty":4,"price_qty10":"₹171.10 INR incl. GST","url":"https://evelta.com/w25q64jvssiq-winbond/"}],
+"best_india_price_qty10":"₹80.00 INR (Campus Component, 381 live India stock). LCSC is cheaper in parts cost (~0.69 USD@10) but is an import.","import_path_if_zero":"Not needed - India stock exists (Campus Component 381 pcs). Backup import: LCSC C22438999, 28,099 in stock, ships to India by DHL/FedEx/EMS 5-8 business days; typical India landed-cost adders: BCD 0% (NOR flash under ITA-1)/10% if classified otherwise + 10% SWS + 18% IGST + courier fee ~15-25 USD.",
+"notes":"Alt GD25Q64CSIG is NRND per bom.csv - not re-quoted. Alt W25Q64JVSSIQ needs DTS jedec-id edit (EF 40 17). Evelta stock is only 4 pcs. Semikart had no listing surfaced (site behind bot-check)."},
+{"ref":"U5","mpn":"PE42359SCAA-Z (pSemi)","india_stock":[
+{"vendor":"DigiKey India (digikey.in)","qty":15288,"price_qty10":"₹84.84 INR (live stock)","url":"https://www.digikey.in/en/products/detail/psemi/PE42359SCAA-Z/4158122"},
+{"vendor":"Mouser India (ships to India)","qty":2335,"price_qty10":"1.02 USD qty-1 (~0.70 USD@10 per Mouser curve; INR shown at checkout on in.mouser.com)","url":"https://www.mouser.com/ProductDetail/pSemi/PE42359SCAA-Z"}],
+"best_india_price_qty10":"₹84.84 INR (DigiKey India, 15,288 live, avg ship 1-3 days, delivered ~4 days, free freight over ₹7,000)","import_path_if_zero":"Not needed - DigiKey India has 15,288 in stock and quotes in INR. DigiKey India ships CPT: duty/customs + IGST due at delivery (ICs typically 0% BCD under ITA-1, +10% SWS + 18% IGST).",
+"notes":"element14 India, TME, Semikart, Sunrom, Robu, Elliott: no listings for this MPN (pSemi not franchised at element14/TME)."},
+{"ref":"J2","mpn":"DM3AT-SF-PEJM5 (Hirose)","india_stock":[
+{"vendor":"element14 India (in.element14.com)","qty":5969,"price_qty10":"₹164.69 INR (qty-10 falls in 1+ break; next break at 37+)","url":"https://in.element14.com/hirose-hrs/dm3at-sf-pejm5/connector-micro-sd-standard-8pos/dp/2427719"},
+{"vendor":"DigiKey India (digikey.in)","qty":27333,"price_qty10":"₹200.29 INR (live stock)","url":"https://www.digikey.in/en/products/detail/hirose-electric-co-ltd/DM3AT-SF-PEJM5/2533565"},
+{"vendor":"TME (ships to India)","qty":0,"price_qty10":"2.05 USD (0 in TME stock; 9,659 expected 14-Jan-2027)","url":"https://www.tme.eu/en/details/dm3at-sf-pejm5_c/card-connectors/hirose/dm3at-sf-pejm5/"},
+{"vendor":"DigiKey India (alt: Molex 1040310811)","qty":10016,"price_qty10":"₹153.52 INR (live stock)","url":"https://www.digikey.in/en/products/detail/molex/1040310811/2370379"}],
+"best_india_price_qty10":"₹164.69 INR (element14 India, 5,969 live local stock, delivery 4-6 business days, domestic GST invoice - no customs)","import_path_if_zero":"Not needed - element14 India (5,969) and DigiKey India (27,333) both hold live stock in INR. TME is a backorder path (0 stock, 9,659 due 14-Jan-2027, USD 2.05@10, ships to India with EU export + India duty/IGST on arrival).",
+"notes":"Alt Molex 1040310811 is ₹153.52@10 at DigiKey India (10,016 live) - cheaper than Hirose on DigiKey but more expensive than element14's Hirose; BOM says socket is firmware-agnostic, no pull-ups from MAIN 3V3. Sunrom/Robu/Elliott/Semikart: no listings found."}
+],"collected_date":"2026-11-21"}

@@ -25,6 +25,19 @@ findings. No KiCad project exists yet. No hardware exists yet.
 
 ## Done and verified (M1)
 
+- **India re-quote (2026-11-21):** `bom/bom.csv` now carries India
+  stock + INR pricing per row (digikey.in / mouser.in / element14 India /
+  LCSC / Campus Component Pune / Semikart / Robu checked; raw quotes in
+  `bom/bom_india_requote.json` + `bom/india_quotes_2026-11-21.json`).
+  Per-board cost @qty-10 ≈ **₹3,700**. digikey.in U1 price verified live
+  (5,833 in stock, ₹920.19 @10). India zero-stock rows: T5838 mic
+  (backorder Dec-2026/Mar-2027; Knowles sub live 22.6k @ ₹224.69), battery
+  (factory-direct only; Robu WLY601235 rejected — wrong size, no NTC),
+  magnetic pogo (12-wk backorder). Passives: exact Murata 100 nF/4.7 µF not
+  stocked in India — named equivalents (Yageo CC0402 / Murata ME47D) are
+  deep-stocked. Note: digikey.in stock ships from global warehouse (duty +
+  GST at delivery); element14 India quotes are domestic GST-inclusive.
+
 - `bom/bom.csv`: per-block MPNs, packages, stock + qty-10 prices at 2+
   distributors (collected 2026-11-21 by three parallel research passes);
   firmware-constrained parts flagged; substitutions carry their firmware

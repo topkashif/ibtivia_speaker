@@ -1,0 +1,61 @@
+{
+  "rows": [
+    {"ref": "SW1", "mpn": "KMR231NG LFS (C&K)", "india_stock": [
+      {"vendor": "Digi-Key India (digikey.in, ships to India ~4 days)", "qty": 19881, "price_qty10": "₹79.89 INR/unit", "url": "https://www.digikey.in/en/products/detail/c-k/KMR231NG-LFS/2176485"},
+      {"vendor": "element14 India (sibling KMR231G LFS, order code 1437636)", "qty": null, "price_qty10": "₹63.57 INR/unit @10", "url": "https://in.element14.com/c/switches-relays/switches/tactile-switches?brand=c-k-components&product-range=kmr-2-series"},
+      {"vendor": "LCSC (ships to India) - alt Alps SKRPACE010 C139797", "qty": 138220, "price_qty10": "$0.067 USD/unit", "url": "https://www.lcsc.com/product-detail/Tactile-Switches_ALPSALPINE-SKRPACE010_C139797.html"},
+      {"vendor": "Digi-Key India - alt Alps SKRPACE010", "qty": 0, "price_qty10": "₹17.22 INR/unit @10 (backorder)", "url": "https://www.digikey.in/en/products/detail/alps-alpine/SKRPACE010/18115579"}
+    ], "best_india_price_qty10": "₹79.89 INR (exact KMR231NG LFS @ digikey.in); ₹5.9 INR-equiv if Alps SKRPACE010 alt accepted via LCSC", "import_path_if_zero": "n/a - stocked", "notes": "Exact NG variant deep-stocked at digikey.in. element14 India lists only the G (grounded-cap) sibling KMR231G LFS at lower price - verify availability column before ordering. SKRPACE010 is 2.5mm tall vs 1.9mm actuator - mechanical fit check before swap."},
+    {"ref": "ANT1", "mpn": "2450AT18B0100001E (Johanson)", "india_stock": [
+      {"vendor": "Digi-Key India", "qty": 1505, "price_qty10": "₹45.46 INR/unit", "url": "https://www.digikey.in/en/products/detail/johanson-technology-inc/2450AT18B0100001E/1560677"},
+      {"vendor": "Digi-Key India - alt Pulse W3006", "qty": 14875, "price_qty10": "₹208.20 INR/unit", "url": "https://www.digikey.in/en/products/detail/pulse-electronics/W3006/2267869"}
+    ], "best_india_price_qty10": "₹45.46 INR", "import_path_if_zero": "n/a - stocked (1,505 pcs thin shelf)", "notes": "Stock is Digi-Key global warehouse shipped to India (~4-day delivery, free over ₹7,000, duty+GST billed at delivery). NOT footprint-compatible with W3006 alt (different keep-out); only 1,505 pcs shelf - order early or reserve reel."},
+    {"ref": "X1", "mpn": "ECS-320-10-36-CKL-TR (ECS)", "india_stock": [
+      {"vendor": "Digi-Key India", "qty": 217, "price_qty10": "₹33.38 INR/unit", "url": "https://www.digikey.in/en/products/result?keywords=ECS-320-10-36-CKL-TR"}
+    ], "best_india_price_qty10": "₹33.38 INR", "import_path_if_zero": "n/a - stocked, but only 217 pcs (matches BOM thin-shelf flag; 19-wk factory lead)", "notes": "No element14 India listing found for the exact 10pF CKL variant; element14 India stocks other ECX-2236 family (8pF) variants only. Thin shelf - order cut tape promptly."},
+    {"ref": "X2", "mpn": "ECS-.327-7-34B-TR (ECS)", "india_stock": [
+      {"vendor": "Digi-Key India", "qty": 63000, "price_qty10": "₹52.60 INR/unit", "url": "https://www.digikey.in/en/products/detail/ecs-inc/ECS-327-7-34B-TR/1850347"}
+    ], "best_india_price_qty10": "₹52.60 INR", "import_path_if_zero": "n/a - deep stock", "notes": "7pF load variant must be kept (matches nRF5340 LFXO internal 7pF tuning); do not substitute plain 12.5pF parts."},
+    {"ref": "L1+L2", "mpn": "MLZ2012N100LT000 (TDK)", "india_stock": [
+      {"vendor": "Digi-Key India", "qty": 69286, "price_qty10": "₹6.94 INR/unit", "url": "https://www.digikey.in/en/products/detail/tdk-corporation/MLZ2012N100LT000/2523500"}
+    ], "best_india_price_qty10": "₹6.94 INR", "import_path_if_zero": "n/a - deep stock", "notes": "Qty 2/board. TDK distributor board shows element14 6,000 pcs (SG pool) and TME ~10k as alternate pools."},
+    {"ref": "L3+L4", "mpn": "NRS4018T2R2MDGJ (Taiyo Yuden)", "india_stock": [
+      {"vendor": "Digi-Key India", "qty": 38518, "price_qty10": "₹15.50 INR/unit", "url": "https://www.digikey.in/en/products/detail/taiyo-yuden/NRS4018T2R2MDGJ/2648968"}
+    ], "best_india_price_qty10": "₹15.50 INR", "import_path_if_zero": "n/a - deep stock", "notes": "Qty 2/board. Meets nPM1300 PS v1.3 Table 3 (2.2uH, DCR<=400mR, Isat>=350mA)."},
+    {"ref": "Z1", "mpn": "VCLP1020B002L (Vybronics)", "india_stock": [
+      {"vendor": "Digi-Key India", "qty": 3020, "price_qty10": "₹265.26 INR/unit", "url": "https://www.digikey.in/en/products/detail/vybronics-inc/VCLP1020B002L/10285888"}
+    ], "best_india_price_qty10": "₹265.26 INR", "import_path_if_zero": "n/a - stocked (3,020 pcs)", "notes": "No Indian retail stocking of Vybronics; Digi-Key India is the only franchised India-facing path. Factory MOQ 4k via Vybronics direct for volume."},
+    {"ref": "BT1", "mpn": "HSZ 362123 (Li-Po 240mAh 3-wire NTC)", "india_stock": [], "best_india_price_qty10": "NONE in India", "import_path_if_zero": "Factory-direct only: HSZ via Alibaba (MOQ ~1k-10k, ~$0.8-1.5 quote) or alternate factory-direct LiPol LP362227 / PKCELL LP362123-class. India retail has NO 362123-class 2.3mm-thick 3-wire NTC pack - closest Robu.in listing WLY601235 240mAh is 6.0mm thick and 2-wire, NOT a mechanical or electrical fit.", "notes": "Zero India stock confirmed. Robu WLY601235 (₹159, in stock) is capacity-equivalent but wrong form factor (6x12x35mm vs 3.6x21x23mm) and no NTC pin - reject. Any cell swap needs battery_model.inc OCV edit + NTC beta 3380 match per BOM."},
+    {"ref": "J1", "mpn": "303C-C4115-30-04 (Attend)", "india_stock": [
+      {"vendor": "Digi-Key India", "qty": 0, "price_qty10": "₹767.82 INR/unit @10 (backorder, 12-wk factory lead)", "url": "https://www.digikey.in/en/products/detail/attend-technology/303C-C4115-30-04/21284914"}
+    ], "best_india_price_qty10": "NONE in stock in India", "import_path_if_zero": "Digi-Key backorder (digikey.in shows 0 available, price listed) or Attend factory direct; generic Alibaba 4-pin magnetic pogo remain the volume alternate (BOM-flagged single-source part).", "notes": "Zero shelf stock confirmed on the India storefront. Not stocked at element14 India, Mouser India, TME, Semikart."},
+    {"ref": "J3", "mpn": "USB4105-GF-A (GCT)", "india_stock": [
+      {"vendor": "Digi-Key India", "qty": 308227, "price_qty10": "₹64.29 INR/unit", "url": "https://www.digikey.in/en/products/detail/gct/USB4105-GF-A/11198441"},
+      {"vendor": "element14 India (domestic warehouse)", "qty": 237150, "price_qty10": "₹71.01 INR/unit @10", "url": "https://in.element14.com/gct-global-connector-technology/usb4105-gf-a/usb-conn-2-0-type-c-rcpt-16pos/dp/3588205"}
+    ], "best_india_price_qty10": "₹64.29 INR (digikey.in); element14 India ₹71.01 is the domestic-GST-invoice option", "import_path_if_zero": "n/a - deep stock both", "notes": "element14 India price breaks observed: 1+ ₹83.57 / 10+ ₹71.01 / 25+ ₹63.66 (GST-inclusive domestic)."},
+    {"ref": "C1x", "mpn": "GRM155R71H104KE14D (Murata) - exact MPN ZERO on digikey.in", "india_stock": [
+      {"vendor": "Digi-Key India - EQUIVALENT Yageo CC0402KRX7R9BB104 (100nF X7R 50V 0402)", "qty": 535400, "price_qty10": "₹6.66 INR/unit", "url": "https://www.digikey.in/en/products/detail/yageo/CC0402KRX7R9BB104/5883371"},
+      {"vendor": "LCSC (ships to India) - Yageo/basic-brand 100nF 0402", "qty": null, "price_qty10": "well under $0.01 USD/unit (basic part)", "url": "https://www.lcsc.com/search?q=CC0402KRX7R9BB104"}
+    ], "best_india_price_qty10": "₹6.66 INR/unit (Yageo equivalent @ digikey.in); LCSC basic part cheaper still", "import_path_if_zero": "Exact Murata not stocked in India - use named equivalent Yageo CC0402KRX7R9BB104 (535k @ digikey.in) or LCSC basic part.", "notes": "25 pcs/board. Equivalent MPN explicitly named: CC0402KRX7R9BB104 (matches 100nF X7R 50V 0402 spec)."},
+    {"ref": "C2x", "mpn": "GRM155R60J475ME87D (Murata) - exact MPN ZERO on digikey.in", "india_stock": [
+      {"vendor": "Digi-Key India - same-family variant GRM155R60J475ME47D (4.7uF X5R 6.3V 0402)", "qty": 967021, "price_qty10": "₹5.14 INR/unit", "url": "https://www.digikey.in/en/products/detail/murata-electronics/GRM155R60J475ME47D/3694656"}
+    ], "best_india_price_qty10": "₹5.14 INR/unit (Murata GRM155R60J475ME47D, D-suffix)", "import_path_if_zero": "Exact ME87D not stocked - the ME47D variant (identical X5R 6.3V 4.7uF 0402 spec, D-tolerance grade) is deep-stocked; Yageo CC0402KRX5R6BB475 exists but is 0-stock at digikey.in (₹22.45 @10 backorder).", "notes": "8 pcs/board. Mind DC-bias derating per BOM; use 2x parallel where full bulk needed."},
+    {"ref": "C3x", "mpn": "GRM188R60J106ME47J (Murata)", "india_stock": [
+      {"vendor": "Digi-Key India", "qty": 871537, "price_qty10": "₹12.75 INR/unit", "url": "https://www.digikey.in/en/products/detail/murata-corporation/GRM188R60J106ME47J/2612410"}
+    ], "best_india_price_qty10": "₹12.75 INR", "import_path_if_zero": "n/a - deep stock, exact MPN", "notes": "6 pcs/board. Exact MPN stocked; no substitute needed."},
+    {"ref": "R1x", "mpn": "ERJ-2GEJ472X (Panasonic 4.7k 0402)", "india_stock": [
+      {"vendor": "Digi-Key India", "qty": 1081440, "price_qty10": "₹2.95 INR/unit", "url": "https://www.digikey.in/en/products/detail/panasonic-electronic-components/ERJ-2GEJ472X/147026"},
+      {"vendor": "Digi-Key India - equivalent Yageo RC0402JR-074K7L", "qty": 1541109, "price_qty10": "₹2.00 INR/unit", "url": "https://www.digikey.in/en/products/detail/yageo/RC0402JR-074K7L/726477"}
+    ], "best_india_price_qty10": "₹2.00 INR (Yageo equivalent) / ₹2.95 INR exact Panasonic", "import_path_if_zero": "n/a - deep stock, exact MPN", "notes": "2 pcs/board I2C1 pull-ups. Equivalent MPN named: RC0402JR-074K7L (5% 4.7k 0402)."},
+    {"ref": "R2x", "mpn": "ERJ-2GEJ103X (Panasonic 10k 0402)", "india_stock": [
+      {"vendor": "Digi-Key India", "qty": 4793616, "price_qty10": "₹2.95 INR/unit", "url": "https://www.digikey.in/en/products/detail/panasonic-electronic-components/ERJ-2GEJ103X/146735"}
+    ], "best_india_price_qty10": "₹2.95 INR", "import_path_if_zero": "n/a - deep stock, exact MPN", "notes": "4 pcs/board. Yageo RC0402JR-0710KL available same-series if equivalent wanted."},
+    {"ref": "R3", "mpn": "ERJ-2GEJ102X (Panasonic 1k 0402)", "india_stock": [
+      {"vendor": "Digi-Key India", "qty": 1065204, "price_qty10": "₹2.76 INR/unit", "url": "https://www.digikey.in/en/products/detail/panasonic-electronic-components/ERJ-2GEJ102X/146898"}
+    ], "best_india_price_qty10": "₹2.76 INR", "import_path_if_zero": "n/a - deep stock, exact MPN (digikey.in cut tape active, unlike digikey.com backorder in BOM)", "notes": "LED series resistor."},
+    {"ref": "LED1", "mpn": "APG1005ZGC-5MAV (Kingbright)", "india_stock": [
+      {"vendor": "Digi-Key India", "qty": 50240, "price_qty10": "₹36.52 INR/unit", "url": "https://www.digikey.in/en/products/detail/kingbright/APG1005ZGC-5MAV/15816648"}
+    ], "best_india_price_qty10": "₹36.52 INR", "import_path_if_zero": "n/a - stocked", "notes": "No element14 India listing found for this exact low-current 0402 green LED; Digi-Key India is the practical path."}
+  ],
+  "collected_date": "2026-11-21"
+}
