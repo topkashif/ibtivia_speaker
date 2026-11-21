@@ -5,7 +5,7 @@
 	(uuid "77518237-9878-4088-8f01-62feb60facc9")
 	(paper "A4")
 	(title_block
-		(title "Neo N1 - reSpeaker Clip clone (no OLED)")
+		(title "ibtivia Ai Clip")
 		(date "2026-11-21")
 		(rev "A")
 		(comment 1 "Power: nPM1300 power tree, battery, rails, LED on P1.09")

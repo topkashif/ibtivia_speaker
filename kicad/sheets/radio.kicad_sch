@@ -5,7 +5,7 @@
 	(uuid "47b0e3b7-6847-4f23-9317-fd80997304b2")
 	(paper "A4")
 	(title_block
-		(title "Neo N1 - reSpeaker Clip clone (no OLED)")
+		(title "ibtivia Ai Clip")
 		(date "2026-11-21")
 		(rev "A")
 		(comment 1 "Radio: nRF5340 + nRF7002 + antenna switch + antenna + crystals + coex PTA")

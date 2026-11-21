@@ -5,7 +5,7 @@
 	(uuid "1a51ce0c-3319-42f6-9440-ba22b62f1b81")
 	(paper "A4")
 	(title_block
-		(title "Neo N1 - reSpeaker Clip clone (no OLED)")
+		(title "ibtivia Ai Clip")
 		(date "2026-11-21")
 		(rev "A")
 		(comment 1 "Audio: PDM mics (L/R) + ERM haptic driver")

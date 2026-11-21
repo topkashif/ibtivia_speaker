@@ -5,7 +5,7 @@
 	(uuid "99e7020e-70f7-4d7c-930e-41046910d87a")
 	(paper "A4")
 	(title_block
-		(title "Neo N1 - reSpeaker Clip clone (no OLED)")
+		(title "ibtivia Ai Clip")
 		(date "2026-11-21")
 		(rev "A")
 		(comment 1 "Misc: SWD + test points on every rail/bus, user button (KMR231NG LFS)")
